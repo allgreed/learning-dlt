@@ -1,0 +1,29 @@
+- assesment method?
+    - 2 assigmnments
+
+- keep track of time !
+- Github public repo
+
+- schedule next message
+    -> implying Event Loop?
+
+- prepare the arguments
+localhost:40000
+localhost:40001
+localhost:40002
+
+def main():
+    - take list of nodes on init
+    - remove itself from list of nodes
+
+    while True:
+        # TODO: properly handle ctrl+c
+        wait random(500, 5000)ms
+        send a message over UDP every to every node, with content "test"
+        # TODO: listen for incoming messages and use handle_msg
+    
+def handle_msg(content: str, ip, port):
+    print("Message [{content}] from [{ip}]:[{port}]")
+
+=====
+Refactor? o.0
