@@ -1,4 +1,4 @@
-#Learning DLT
+# Learning DLT
 Artifacts of the DLT5400 course
 
 ## Usage

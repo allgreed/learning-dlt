@@ -22,7 +22,7 @@ def main():
     t = loop.create_datagram_endpoint(CustomProtocol, local_addr=(host, port))
     loop.run_until_complete(t)
 
-    loop.create_task(perpetually(loop, functools.partial(send_udp_message_to_all, nodes=nodes, message="test")))
+    loop.create_task(perpetually(loop, functools.partial(send_delayed_udp_message_to_all, nodes=nodes, message="test")))
 
     loop.run_forever()
     
@@ -36,18 +36,17 @@ class CustomProtocol(asyncio.DatagramProtocol):
         print(f"Message [{data.decode()}] from [{ip}]:[{port}]")
 
 
-def send_udp_message_to_all(nodes, message):
-    for n in nodes:
-        send_upd_message(*n, message)
+async def send_delayed_udp_message_to_all(nodes, message):
+    await asyncio.gather(*[send_delayed_upd_message(*n, message) for n in nodes])
 
-def send_upd_message(host, port, message) -> None:
+async def send_delayed_upd_message(host, port, message) -> None:
+    await asyncio.sleep(random.randint(500, 5000) / 1000)
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.sendto(message.encode(), (host, port))
 
 
 async def perpetually(event_loop, f):
-    await asyncio.sleep(random.randint(500, 5000) / 1000)
-    f()
+    await f()
     event_loop.create_task(perpetually(event_loop, f))
 
 if __name__ == "__main__":
