@@ -1,0 +1,5 @@
+- example of transaction reversal: IRC21 can be implemented on top or as an Ether token; but it's not really practical
+- there are mutable blockchains o.0 (just a chain of hashes)
+- sending money immidietly is not a good idea, they should withdraw the funds; it's about paying for gas + reentrancy bug!
+- commit / reveal -> for casinos :D => no way for voting
+- social centralization is a thing -> etherium fork
