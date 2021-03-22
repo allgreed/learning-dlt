@@ -1,0 +1,13 @@
+Storage, only storing events / diffs / bits,
+    because the state is mutable (balances can change), but the events / bits / transaction cannot and the immutability solves a wide range of problems
+
+10:36 -> who should be "transactionFrom"? -> just use some random numbers
+
+questions:
+- is every message broadcasted?
+- also: how do I know that the node has received all sync messages?
+    - just count them? xD
+
+- for the future => maybe just give people protobufs? xD
+- ask if we can replace it :D
+- can we do an integration test? :D
