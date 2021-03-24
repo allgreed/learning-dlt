@@ -1,10 +1,15 @@
 from dataclasses import dataclass
 
-class Message:
-    ...
+# TODO: implmenet binary protocol
 
-    def encode(self):
-        return self.MEM
+STX = b"2"
+ETX = b"3"
+
+
+class Message:
+    def encode(self) -> str:
+        _args = [getattr(self, k) for k in self.__dataclass_fields__]
+        return " ".join(map(str, [self.MEM, *_args]))
 
     @classmethod
     def from_parse(cls, _):
@@ -72,30 +77,17 @@ class GetTransaction(Message):
         return cls(number=int(args[0]))
 
 
-class Protocol:
-    STX = b"2"
-    ETX = b"3"
+def encode(msg):
+    return msg.encode()
+    # TODO: len in bytes
+    # return STX + len(msg) + msg + ETX
 
-    # TODO: can this be done smarter? yep, with an import xd
-    HighestTransaction = HighestTransaction
-    HighestTransactionResponse = HighestTransactionResponse
-    GetTransaction = GetTransaction
-    NewTransaction = NewTransaction
-    Message = Message
+def decode(data):
+    msg = data.decode()
 
-    @staticmethod
-    def encode(msg):
-        return msg.encode()
-        # TODO: len in bytes
-        # return STX + len(msg) + msg + ETX
+    cmd, *body = msg.split(" ")
 
-    @staticmethod
-    def decode(data):
-        msg = data.decode()
+    cmd_cls = { cls.MEM: cls for cls in Message.__subclasses__()}[cmd]
+    result = cmd_cls.from_parse(body)
 
-        cmd, *body = msg.split(" ")
-
-        cmd_cls = { cls.MEM: cls for cls in Message.__subclasses__()}[cmd]
-        result = cmd_cls.from_parse(body)
-
-        return result
+    return result
