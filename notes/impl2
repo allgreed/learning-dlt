@@ -17,5 +17,8 @@ Storage, only storing events / diffs / bits,
     - distinguishable messages?
     So... the sync is non-blocking, but has a wait
 
-questions:
+- how to reasonably code this? globals everywhere? :C not really
+- ok => adding to the ledger, dropping => nok
+- state machine <- not really needed
 
+questions:

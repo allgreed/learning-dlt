@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List
+from typing import Dict
 from datetime import datetime
 from collections import defaultdict
 
@@ -9,9 +9,10 @@ username_t = str
 @dataclass
 class Transaction:
     number: int
-    timestamp: datetime
     from_username: username_t
     to_username: username_t
+    timestamp: float
+
 
 @dataclass
 class TransactionIntent:
@@ -19,12 +20,27 @@ class TransactionIntent:
     to_username: username_t
 
 
-@dataclass
 class State:    
-    transactions: List[Transaction]
+    def __init__(self, transactions=None):
+        self.transactions = transactions or {}
 
-    def append(self, t: Transaction):
-        self.transactions.append(t)
+    def _append(self, t: Transaction):
+        self.transactions[t.number] = t
+
+    # TODO: change into subscription, migrate GetTransaction hanlder
+    def get(self, trn: int):
+        return self.transactions[trn]
+
+    def incorporate(self, t: Transaction) -> bool:
+        if t.number not in self.transactions:
+            self._append(t)
+            return True
+        else:
+            if self.transactions[t.number].timestamp > t.timestamp:
+                self._append(t)
+                return True
+            else:
+                return False
 
     def balance(self, username: username_t):
         return self.ledger[username]
@@ -33,7 +49,7 @@ class State:
     def ledger(self):
         ledger = defaultdict(lambda: 0)
         amount = 1
-        for t in self.transactions:
+        for t in self.transactions.values():
             ledger[t.from_username] -= amount
             ledger[t.to_username] += amount
 
@@ -42,50 +58,6 @@ class State:
     @property
     def highest_transaction_number(self):
         try:
-            return list(sorted(self.transactions, key=lambda t: t.number))[-1].number
+            return list(sorted(self.transactions.keys()))[-1]
         except IndexError:
             return -1
-
-
-class ProtocolMessage:
-    ...
-
-class NewTransaction(ProtocolMessage):
-    ...
-
-class HighestTransaction(ProtocolMessage):
-    MEM = "HIGHEST_TRN"
-    CMD = b"h"
-
-@dataclass
-class HighestTransactionResponse(ProtocolMessage):
-    MEM = "HIGHEST_TRN_RES"
-    CMD = b"m"
-    number: int
-    ...
-
-
-class Protocol:
-    STX = b"2"
-    ETX = b"3"
-
-    HighestTransaction = HighestTransaction
-    HighestTransactionResponse = HighestTransactionResponse
-
-    @staticmethod
-    def encode(msg):
-        # TODO: len in bytes
-        return STX + len(msg) + msg + ETX
-
-    @staticmethod
-    def decode(data):
-        msg = data.decode()
-
-        # TODO: generalize
-        if msg == "HIGHEST_TRN":
-            return HighestTransaction()
-        if msg.startswith("HIGHEST_TRN_RES"):
-            n = int(msg.replace("HIGHEST_TRN_RES", "").strip())
-            return HighestTransactionResponse(number = n)
-        else:
-            return msg
