@@ -3,11 +3,19 @@ Storage, only storing events / diffs / bits,
 
 10:36 -> who should be "transactionFrom"? -> just use some random numbers
 
-questions:
-- is every message broadcasted?
-- also: how do I know that the node has received all sync messages?
-    - just count them? xD
 
 - for the future => maybe just give people protobufs? xD
-- ask if we can replace it :D
-- can we do an integration test? :D
+    - that was by design
+
+- is every message broadcasted?
+    yes
+
+- bootstrap paradox?
+    - nope 
+- also: how do I know that the node has received all sync messages?
+    - just count them? xD
+    - distinguishable messages?
+    So... the sync is non-blocking, but has a wait
+
+questions:
+

@@ -27,13 +27,17 @@ class State:
         self.transactions.append(t)
 
     def balance(self, username: username_t):
+        return self.ledger[username]
+
+    @property
+    def ledger(self):
         ledger = defaultdict(lambda: 0)
         amount = 1
         for t in self.transactions:
             ledger[t.from_username] -= amount
             ledger[t.to_username] += amount
 
-        return ledger[username]
+        return ledger
 
     @property
     def highest_transaction_number(self):
@@ -46,14 +50,42 @@ class State:
 class ProtocolMessage:
     ...
 
+class NewTransaction(ProtocolMessage):
+    ...
+
+class HighestTransaction(ProtocolMessage):
+    MEM = "HIGHEST_TRN"
+    CMD = b"h"
+
+@dataclass
+class HighestTransactionResponse(ProtocolMessage):
+    MEM = "HIGHEST_TRN_RES"
+    CMD = b"m"
+    number: int
+    ...
+
 
 class Protocol:
     STX = b"2"
     ETX = b"3"
 
+    HighestTransaction = HighestTransaction
+    HighestTransactionResponse = HighestTransactionResponse
+
+    @staticmethod
     def encode(msg):
         # TODO: len in bytes
         return STX + len(msg) + msg + ETX
 
-    def decode():
-        ...
+    @staticmethod
+    def decode(data):
+        msg = data.decode()
+
+        # TODO: generalize
+        if msg == "HIGHEST_TRN":
+            return HighestTransaction()
+        if msg.startswith("HIGHEST_TRN_RES"):
+            n = int(msg.replace("HIGHEST_TRN_RES", "").strip())
+            return HighestTransactionResponse(number = n)
+        else:
+            return msg
