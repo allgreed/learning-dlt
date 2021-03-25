@@ -45,17 +45,21 @@ async def setup(host, port):
 
 
 async def loop(s, username, broadcast_fn):
-    action = await ainput("Choose one of: [t]ransaction, [l]edger, [b]alance and hit enter\n")
+    action = await ainput("Choose one of: [t]ransaction (to), [l]edger, [b]alance and hit enter\n")
 
     if action.startswith("t"):
-        receipient = await ainput("Type username [and hit enter]: ")
+        args = action.split(" ")
+
+        if len(args) > 1:
+            receipient = args[1]
+        else:
+            receipient = await ainput("Type username [and hit enter]: ")
 
         try:
             ti = TransactionIntent(to_username=receipient, from_username=username)
+            make_transaction(ti, s, broadcast_fn=broadcast_fn)
         except ValueError as e:
             print(e) 
-        else:
-            make_transaction(ti, s, broadcast_fn=broadcast_fn)
 
     elif action.startswith("l"):
         print("= {0:^7} =  | = {1:^7} =".format("ACCOUNT", "BALANCE"))
@@ -117,8 +121,7 @@ def make_transaction(ti: TransactionIntent, s: State, broadcast_fn):
     t = Transaction(n + 1, ti.from_username, ti.to_username, datetime.utcnow().timestamp())
 
     if s.balance(t.from_username) < 1 and not t.from_username == MINE_USERNAME:
-        ...
-        # TODO: fail
+        raise ValueError("You need to have at least 1 WBE to make a transaction")
 
     s.incorporate(t)
     broadcast_fn(t)
