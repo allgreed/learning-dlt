@@ -2,7 +2,6 @@ import asyncio
 import os
 from typing import Sequence
 
-
 from src.util import acquire_user_initials_or_exit, ainput, setup_signal_handlers, send_upd_message, periodic
 from src.data import State, Transaction, TransactionIntent
 import src.proto as Protocol
