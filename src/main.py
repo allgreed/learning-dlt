@@ -1,23 +1,17 @@
 import asyncio
 import os
+from typing import Sequence
 
 
-from src.util import acquire_user_initials_or_exit, ainput, setup_signal_handlers, send_upd_message
+from src.util import acquire_user_initials_or_exit, ainput, setup_signal_handlers, send_upd_message, periodic
 from src.data import State, Transaction, TransactionIntent
 import src.proto as Protocol
 
 
 MINE_USERNAME = "77"
-# TODO: get rid of this crap
-# this is a global, mutable variable, because we're in the 80's
-Q = []
-global STATE
-STATE = State()
-BROADCAST_FN = None
 
 
-async def setup(host, port):
-    s = STATE
+async def setup(host, port, state: State):
     nodes_candidates = [
         (host, 5555),
         (host, 5556),
@@ -26,25 +20,29 @@ async def setup(host, port):
     nodes = [n for n in nodes_candidates if n[0] != host or n[1] != port]
 
     username = acquire_user_initials_or_exit()
+
     broadcast_fn = lambda msg: broadcast(nodes, msg)
+    # this is a global, mutable variable, because we're in the 80's
     global BROADCAST_FN
     BROADCAST_FN = broadcast_fn
 
     print(f"Starting node at {host}:{port}, other nodes are: {nodes}")
 
-    send_synchronization_pulse(broadcast_fn=broadcast_fn)
+    # sync every 5 seconds and now
+    _loop = asyncio.get_event_loop()
+    _loop.create_task(periodic(lambda: send_synchronization_pulse(broadcast_fn), 5))
     await asyncio.sleep(1)
     print("initial node sync complete")
 
     for _ in range(10):
-        make_transaction(TransactionIntent(MINE_USERNAME, username), s, broadcast_fn=broadcast_fn)
+        make_transaction(TransactionIntent(MINE_USERNAME, username), state, broadcast_fn=broadcast_fn)
     print(f"Awarded 10 WBE to {username}")
     await asyncio.sleep(0)
 
-    return await loop(s, username, broadcast_fn=broadcast_fn)
+    return await loop(state, username, broadcast_fn=broadcast_fn)
 
 
-async def loop(s, username, broadcast_fn):
+async def loop(state: State, username, broadcast_fn):
     action = await ainput("Choose one of: [t]ransaction (to), [l]edger, [b]alance and hit enter\n")
 
     if action.startswith("t"):
@@ -57,35 +55,31 @@ async def loop(s, username, broadcast_fn):
 
         try:
             ti = TransactionIntent(to_username=receipient, from_username=username)
-            make_transaction(ti, s, broadcast_fn=broadcast_fn)
+            make_transaction(ti, state, broadcast_fn=broadcast_fn)
         except ValueError as e:
             print(e) 
 
     elif action.startswith("l"):
         print("= {0:^7} =  | = {1:^7} =".format("ACCOUNT", "BALANCE"))
-        for t in sorted(s.ledger.items(), key=lambda t: t[0]):
+        for t in sorted(state.ledger.items(), key=lambda t: t[0]):
             print("{0:>12} | {1:>10}".format(t[0], f"{t[1]} WBE"))
         print("==========================")
 
     elif action.startswith("b"):
         print(f"% BALANCE for {username} %")
-        print(f"{s.balance(username)} WBE")
+        print(f"{state.balance(username)} WBE")
         print("%%%%%%%%%%%%%%%%%%")
 
     else:
         pass
 
-    # TODO: every 5 seconds sync
-
-    return await loop(s, username, broadcast_fn=broadcast_fn)
+    return await loop(state, username, broadcast_fn=broadcast_fn)
 
 
-async def process_incoming_messages() -> None:
-    s = STATE
-    q = Q
+async def process_incoming_messages(q: Sequence[Protocol.Message], state: State) -> None:
     broadcast_fn = BROADCAST_FN
 
-    local_trn = s.highest_transaction_number
+    local_trn = state.highest_transaction_number
 
     for m in q:
         print(m)
@@ -96,13 +90,13 @@ async def process_incoming_messages() -> None:
         elif isinstance(m, Protocol.NewTransaction):
             t = extract_transaction(m)
 
-            if s.incorporate(t):
+            if state.incorporate(t):
                 broadcast_fn(Protocol.Ok())
             else:
                 broadcast_fn(Protocol.NotOk())
 
         elif isinstance(m, Protocol.GetTransaction):
-            t = s[m.number]
+            t = state[m.number]
             broadcast_fn(t)
 
         elif isinstance(m, Protocol.HighestTransactionResponse):
@@ -142,16 +136,21 @@ def _main():
     loop = asyncio.get_event_loop()
     setup_signal_handlers()
 
+    # actually, is this queue needed?
+    q = []
+    state = State()
+
     class CustomProtocol(asyncio.DatagramProtocol):
         def datagram_received(self, data, addr):
             msg = Protocol.decode(data)
-            Q.append(msg)
+            q.append(msg)
             loop = asyncio.get_event_loop()
-            loop.create_task(process_incoming_messages())
+            loop.create_task(process_incoming_messages(q, state))
+
     t = loop.create_datagram_endpoint(CustomProtocol, local_addr=(host, port))
     loop.run_until_complete(t)
 
-    loop.create_task(setup(host, port))
+    loop.create_task(setup(host, port, state))
     loop.run_forever()
 
 

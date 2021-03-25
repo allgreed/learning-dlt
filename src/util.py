@@ -9,6 +9,12 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 
 
+async def periodic(f, interval: float):
+    while True:
+        f()
+        await asyncio.sleep(interval)
+
+
 def acquire_user_initials_or_exit():
     try:
         username = sys.argv[1]
