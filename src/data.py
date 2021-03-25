@@ -43,8 +43,11 @@ class State:
             self._append(t)
             return True
         else:
-            if self.transactions[t.number].timestamp > t.timestamp:
+            matching = self.transactions[t.number]
+            if matching.timestamp > t.timestamp:
                 self._append(t)
+                return True
+            elif matching == t:
                 return True
             else:
                 return False
