@@ -17,10 +17,10 @@ def main():
     - remove itself from list of nodes
 
     while True:
-        # TODO: properly handle ctrl+c
+        # tede: properly handle ctrl+c
         wait random(500, 5000)ms
         send a message over UDP every to every node, with content "test"
-        # TODO: listen for incoming messages and use handle_msg
+        # tede: listen for incoming messages and use handle_msg
     
 def handle_msg(content: str, ip, port):
     print("Message [{content}] from [{ip}]:[{port}]")

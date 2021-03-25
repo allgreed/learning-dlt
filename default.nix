@@ -7,11 +7,17 @@ let
     # obtain via `git ls-remote https://github.com/nixos/nixpkgs-channels nixos-unstable`
   };
   pkgs = import nixpkgs { config = {}; };
-  # TODO: use python with proper packages
+  pythonPkgs = python-packages: with python-packages; [
+      ptpython # used for dev
+      pytest # testing
+      pydantic
+    ];
+  pythonCore = pkgs.python38;
+  myPython = pythonCore.withPackages pythonPkgs;
 in
 pkgs.python3Packages.buildPythonApplication {
   pname = "main";
   src = ./.;
   version = "0.1";
-  propagatedBuildInputs = [ pkgs.python3Packages.flask ];
+  propagatedBuildInputs = [ myPython ];
 }

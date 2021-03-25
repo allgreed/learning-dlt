@@ -1,10 +1,13 @@
-from dataclasses import dataclass
 from typing import Dict
 from datetime import datetime
 from collections import defaultdict
 
-# TODO: add some validation with pydantic - max 2 characters
-username_t = str
+from pydantic.dataclasses import dataclass
+from pydantic import constr
+
+
+username_t = constr(min_length=2, max_length=2)
+
 
 @dataclass
 class Transaction:
@@ -27,8 +30,7 @@ class State:
     def _append(self, t: Transaction):
         self.transactions[t.number] = t
 
-    # TODO: change into subscription, migrate GetTransaction hanlder
-    def get(self, trn: int):
+    def __getitem__(self, trn: int):
         return self.transactions[trn]
 
     def incorporate(self, t: Transaction) -> bool:

@@ -1,6 +1,7 @@
 import asyncio
 import os
 
+
 from src.util import acquire_user_initials_or_exit, ainput, setup_signal_handlers, send_upd_message
 from src.data import State, Transaction, TransactionIntent
 import src.proto as Protocol
@@ -44,14 +45,17 @@ async def setup(host, port):
 
 
 async def loop(s, username, broadcast_fn):
-    print("state", s)
     action = await ainput("Choose one of: [t]ransaction, [l]edger, [b]alance and hit enter\n")
 
     if action.startswith("t"):
         receipient = await ainput("Type username [and hit enter]: ")
-        # TODO: test validation at the data layer and handle the err here
-        ti = TransactionIntent(to_username=receipient, from_username=username)
-        make_transaction(ti, s, broadcast_fn=broadcast_fn)
+
+        try:
+            ti = TransactionIntent(to_username=receipient, from_username=username)
+        except ValueError as e:
+            print(e) 
+        else:
+            make_transaction(ti, s, broadcast_fn=broadcast_fn)
 
     elif action.startswith("l"):
         print("= {0:^7} =  | = {1:^7} =".format("ACCOUNT", "BALANCE"))
@@ -94,7 +98,7 @@ async def process_incoming_messages() -> None:
                 broadcast_fn(Protocol.NotOk())
 
         elif isinstance(m, Protocol.GetTransaction):
-            t = s.get(m.number)
+            t = s[m.number]
             broadcast_fn(t)
 
         elif isinstance(m, Protocol.HighestTransactionResponse):
