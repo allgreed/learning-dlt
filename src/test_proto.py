@@ -1,4 +1,6 @@
 import pytest
+from textwrap import wrap
+
 import src.proto as Protocol
 
 
@@ -10,5 +12,13 @@ import src.proto as Protocol
     Protocol.HighestTransactionResponse(5),
     Protocol.GetTransaction(4566788),
 ])
-def test_ble(msg):
-    assert msg == Protocol.decode(Protocol.encode(msg))
+def test_works(msg):
+    transit_msg = Protocol.encode(msg)
+    # gibberish = b"djflsdfksjdlkfs"
+    gibberish = b""
+
+    print(msg)
+    print(transit_msg)
+    print(" ".join(wrap(transit_msg.hex(), 2)))
+
+    assert msg == Protocol.decode(transit_msg + gibberish)

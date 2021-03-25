@@ -79,12 +79,16 @@ class GetTransaction(Message):
 
 def encode(msg):
     _str = msg.encode()
-    return _str.encode()
-    # TODO: len in bytes
-    # return STX + len(msg) + msg + ETX
+
+    length = len(_str).to_bytes(1, byteorder='big')
+
+    result = STX + length + _str.encode() + ETX
+
+    return result
 
 def decode(data):
     msg = data.decode()
+    msg = msg[2:-1]
 
     cmd, *body = msg.split(" ")
 
