@@ -78,7 +78,8 @@ class GetTransaction(Message):
 
 
 def encode(msg):
-    return msg.encode()
+    _str = msg.encode()
+    return _str.encode()
     # TODO: len in bytes
     # return STX + len(msg) + msg + ETX
 

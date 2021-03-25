@@ -25,7 +25,7 @@ lint: setup ## run static analysis
 	@echo "Not implemented"; false
 
 test: setup ## run all tests
-	@echo "Not implemented"; false
+	python -m pytest
 
 container: build ## create container
 	#docker build -t lmap .

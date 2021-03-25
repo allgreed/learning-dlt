@@ -41,7 +41,7 @@ async def ainput(prompt: str = ''):
 
 def send_upd_message(host, port, message) -> None:
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.sendto(message.encode(), (host, port))
+    sock.sendto(message, (host, port))
 
 
 def setup_signal_handlers():
