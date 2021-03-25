@@ -15,6 +15,7 @@ async def setup(host, port, state: State):
         (host, 5555),
         (host, 5556),
         (host, 5557),
+        (host, 9009), # for kicks
     ]
     nodes = [n for n in nodes_candidates if n[0] != host or n[1] != port]
 
@@ -89,6 +90,7 @@ async def process_incoming_messages(q: Sequence[Protocol.Message], state: State)
         elif isinstance(m, Protocol.NewTransaction):
             t = extract_transaction(m)
 
+            # TODO: was it suppose to mean incorporate or already have the same?
             if state.incorporate(t):
                 broadcast_fn(Protocol.Ok())
             else:
