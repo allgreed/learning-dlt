@@ -114,16 +114,13 @@ async def process_incoming_messages() -> None:
     q.clear()
 
 
-def make_transaction(ti: TransactionIntent, s: State, broadcast_fn):
-    n = s.highest_transaction_number
-    # TODO: move this logic into datamodel
-    from datetime import datetime
-    t = Transaction(n + 1, ti.from_username, ti.to_username, datetime.utcnow().timestamp())
+def make_transaction(ti: TransactionIntent, state: State, broadcast_fn):
+    t = Transaction.from_intent(ti, state.highest_transaction_number)
 
-    if s.balance(t.from_username) < 1 and not t.from_username == MINE_USERNAME:
+    if state.balance(t.from_username) < 1 and not t.from_username == MINE_USERNAME:
         raise ValueError("You need to have at least 1 WBE to make a transaction")
 
-    s.incorporate(t)
+    state.incorporate(t)
     broadcast_fn(t)
 
 

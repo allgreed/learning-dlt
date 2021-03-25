@@ -10,17 +10,22 @@ username_t = constr(min_length=2, max_length=2)
 
 
 @dataclass
+class TransactionIntent:
+    from_username: username_t
+    to_username: username_t
+
+
+@dataclass
 class Transaction:
     number: int
     from_username: username_t
     to_username: username_t
     timestamp: float
 
-
-@dataclass
-class TransactionIntent:
-    from_username: username_t
-    to_username: username_t
+    @classmethod
+    def from_intent(cls, ti: TransactionIntent, current_trn: int, now_fn=None) -> "Transaction":
+        now_fn = now_fn or (lambda: datetime.utcnow().timestamp())
+        return cls(current_trn + 1, ti.from_username, ti.to_username, now_fn())
 
 
 class State:    
