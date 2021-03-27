@@ -28,14 +28,14 @@ class NewTransaction(Message):
     to_username: str
     timestamp: int
     approved: bool = True
-    approve_trn: int = 0
+    approved_trn: int = 0
 
     STRUCT = "h4cI?I"
 
     def encode(self) -> bytes:
         prepacked_chars = map(functools.partial(bytes, encoding="ascii"), [*self.from_username, *self.to_username])
 
-        return struct.pack(self.STRUCT, self.number, *prepacked_chars, self.timestamp, self.approved, self.approve_trn)
+        return struct.pack(self.STRUCT, self.number, *prepacked_chars, self.timestamp, self.approved, self.approved_trn)
 
     @classmethod
     def from_parse(cls, args):

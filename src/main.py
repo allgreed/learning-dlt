@@ -3,7 +3,7 @@ import os
 from typing import Sequence
 
 from src.util import acquire_user_initials_or_exit, ainput, setup_signal_handlers, send_upd_message, periodic
-from src.data import State, TransferIntent, Transfer
+from src.data import State, TransferIntent, Transfer, TransferRequiringApproval, TransferApproval, Transaction
 import src.proto as Protocol
 
 
@@ -39,11 +39,14 @@ async def setup(host, port, state: State):
     print(f"Awarded 10 WBE to {username}")
     await asyncio.sleep(0)
 
+    # TODO: remove after testing
+    # state.incorporate(TransferRequiringApproval(123, 456, "ab", "xd"))
+
     return await loop(state, username, broadcast_fn=broadcast_fn)
 
 
 async def loop(state: State, username, broadcast_fn):
-    action = await ainput("Choose one of: [t]ransaction (to), [l]edger, [b]alance and hit enter\n")
+    action = await ainput("Choose one of: [t]ransaction (to), [h]istory, [l]edger, [b]alance, [p]ending and hit enter\n")
 
     if action.startswith("t"):
         args = action.split(" ")
@@ -58,6 +61,19 @@ async def loop(state: State, username, broadcast_fn):
             make_transfer(ti, state, broadcast_fn=broadcast_fn)
         except ValueError as e:
             print(e) 
+
+    elif action.startswith("h"):
+        print("==========================")
+        for t in sorted(state.transactions.values(), key=lambda t: t.timestamp):
+            print(t)
+        print("==========================")
+
+    elif action.startswith("p"):
+        print("= {0:^6} = | = {1:^6} = | = {2:^3} =".format("FROM", "AMOUNT", "TRN"))
+        for t in sorted(state.pending_for(username), key=lambda t: t.trn):
+            amount = 1
+            print("{0:>10} | {1:>10} | {2:>7}".format(t.from_username, f"{amount} WBE", t.trn))
+        print("==========================")
 
     elif action.startswith("l"):
         print("= {0:^7} =  | = {1:^7} =".format("ACCOUNT", "BALANCE"))
@@ -90,7 +106,7 @@ async def process_incoming_messages(q: Sequence[Protocol.Message], state: State)
         elif isinstance(m, Protocol.NewTransaction):
             t = extract_transaction(m)
 
-            # TODO: was it suppose to mean incorporate or already have the same?
+            # was it suppose to mean incorporate or already have the same?
             if state.incorporate(t):
                 broadcast_fn(Protocol.Ok())
             else:
@@ -159,12 +175,35 @@ def send_synchronization_pulse(broadcast_fn):
     broadcast_fn(Protocol.HighestTransaction())
 
 
-def extract_transaction(msg: Protocol.NewTransaction) -> "Transaction":
-    return Transfer(trn=msg.number, from_username=msg.from_username, to_username=msg.to_username, timestamp=msg.timestamp)
+def extract_transaction(msg: Protocol.NewTransaction) -> Transaction:
+    args = {"trn": msg.number, "timestamp": msg.timestamp}
+    cls = Transfer
+
+    if msg.approved_trn:
+        cls = TransferApproval
+        args["approved_trn"] = msg.approved_trn
+    else:
+        args.update({"from_username": msg.from_username, "to_username" :msg.to_username})
+
+    if not msg.approved:
+        cls = TransferRequiringApproval
+        
+    return cls(**args)
 
 
-def pack_transaction(t: "Transaction") -> Protocol.NewTransaction:
-    return Protocol.NewTransaction(number=t.trn, from_username=t.from_username, to_username=t.to_username, timestamp=t.timestamp)
+def pack_transaction(t: Transaction) -> Protocol.NewTransaction:
+    args = {"number": t.trn, "timestamp": t.timestamp}
+
+    if isinstance(t, TransferApproval):
+        # TODO: to_username effectively doesn't matter, but should be set according to the spec :C 
+        args.update({"approved_trn": t.approved_trn, "to_username": "56", "from_username": "00"})
+
+    if isinstance(t, Transfer):
+        args.update({"from_username": t.from_username, "to_username":t.to_username})
+
+    if isinstance(t, TransferRequiringApproval):
+        args["approved"] = False
+    return Protocol.NewTransaction(**args)
 
 
 if __name__ == "__main__":

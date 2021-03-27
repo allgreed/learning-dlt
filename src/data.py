@@ -72,18 +72,7 @@ class State:
     @property
     def ledger(self):
         ledger = defaultdict(lambda: 0)
-        raw_transactions = self.transactions.values()
-
-        approved_trns, pending, real = set(), [], []
-        for t in raw_transactions:
-            if type(t) == TransferApproval:
-                approved_trns.add(t.approved_trn)
-            elif type(t) == TransferRequiringApproval:
-                pending.append(t)
-            elif type(t) == Transfer:
-                real.append(t)
-            else: # impossible
-                assert False, "Unsupported type in transaction sorting"
+        approved_trns, pending, real = self._sorted_transactions()
 
         effective_transfers = real + [t for t in pending if t.trn in approved_trns]
 
@@ -94,6 +83,24 @@ class State:
             ledger[t.to_username] += amount
 
         return ledger
+
+    def _sorted_transactions(self):
+        approved_trns, pending, real = set(), [], [] 
+        for t in self.transactions.values():
+            if type(t) == TransferApproval:
+                approved_trns.add(t.approved_trn)
+            elif type(t) == TransferRequiringApproval:
+                pending.append(t)
+            elif type(t) == Transfer:
+                real.append(t)
+            else: # impossible
+                assert False, "Unsupported type in transaction sorting"
+
+        return approved_trns, pending, real
+
+    def pending_for(self, username: username_t):
+        approved_trns, pending, _ = self._sorted_transactions()
+        return [t for t in pending if t.trn not in approved_trns and t.to_username == username]
 
     @property
     def highest_transaction_number(self):
