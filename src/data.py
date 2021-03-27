@@ -3,10 +3,11 @@ from datetime import datetime
 from collections import defaultdict
 
 from pydantic.dataclasses import dataclass
-from pydantic import constr
+from pydantic import constr, conint
 
 
 username_t = constr(min_length=2, max_length=2)
+trn_t = conint(ge=0)
 
 
 @dataclass
@@ -17,7 +18,7 @@ class TransactionIntent:
 
 @dataclass
 class Transaction:
-    number: int
+    number: trn_t
     from_username: username_t
     to_username: username_t
     timestamp: int
@@ -26,6 +27,16 @@ class Transaction:
     def from_intent(cls, ti: TransactionIntent, current_trn: int, now_fn=None) -> "Transaction":
         now_fn = now_fn or (lambda: int(datetime.utcnow().timestamp()))
         return cls(current_trn + 1, ti.from_username, ti.to_username, now_fn())
+
+
+@dataclass
+class TransactionApproval:
+    approved_trn: trn_t
+
+
+@dataclass
+class TransactionRequiringApproval(Transaction):
+    pass
 
 
 class State:    

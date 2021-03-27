@@ -1,12 +1,11 @@
 todo:
-- add 2 datatypes
-    - Transafer Requiring Approval
-    - Approval of Transfer 
+- modify state to work properly with non-approved transactions
+    - requiring approval doesn't affect balance
+    - requiring approval + approval affect balance
+
+also: 'h'
+    list all transactions
+
 - allow to send Transafer Requiring Approval from the ui
 - allow [only the receipient] to send Approval of Transfer
 - allow to see transactions pending approval
-
-also:
-    list all transactions
-[?]
-- modify state to work properly with non-approved transactions
