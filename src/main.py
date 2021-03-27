@@ -3,7 +3,7 @@ import os
 from typing import Sequence
 
 from src.util import acquire_user_initials_or_exit, ainput, setup_signal_handlers, send_upd_message, periodic
-from src.data import State, Transaction, TransactionIntent
+from src.data import State, TransferIntent, Transfer
 import src.proto as Protocol
 
 
@@ -35,7 +35,7 @@ async def setup(host, port, state: State):
     print("initial node sync complete")
 
     for _ in range(10):
-        make_transaction(TransactionIntent(MINE_USERNAME, username), state, broadcast_fn=broadcast_fn)
+        make_transfer(TransferIntent(MINE_USERNAME, username), state, broadcast_fn=broadcast_fn)
     print(f"Awarded 10 WBE to {username}")
     await asyncio.sleep(0)
 
@@ -54,8 +54,8 @@ async def loop(state: State, username, broadcast_fn):
             receipient = await ainput("Type username [and hit enter]: ")
 
         try:
-            ti = TransactionIntent(to_username=receipient, from_username=username)
-            make_transaction(ti, state, broadcast_fn=broadcast_fn)
+            ti = TransferIntent(to_username=receipient, from_username=username)
+            make_transfer(ti, state, broadcast_fn=broadcast_fn)
         except ValueError as e:
             print(e) 
 
@@ -109,8 +109,8 @@ async def process_incoming_messages(q: Sequence[Protocol.Message], state: State)
     q.clear()
 
 
-def make_transaction(ti: TransactionIntent, state: State, broadcast_fn):
-    t = Transaction.from_intent(ti, state.highest_transaction_number)
+def make_transfer(ti: TransferIntent, state: State, broadcast_fn):
+    t = Transfer.from_intent(ti, state.highest_transaction_number)
 
     if state.balance(t.from_username) < 1 and not t.from_username == MINE_USERNAME:
         raise ValueError("You need to have at least 1 WBE to make a transaction")
@@ -120,7 +120,7 @@ def make_transaction(ti: TransactionIntent, state: State, broadcast_fn):
 
 
 def broadcast(nodes, message):
-    if isinstance(message, Transaction):
+    if isinstance(message, Transfer):
         message = pack_transaction(message)
 
     assert isinstance(message, Protocol.Message)
@@ -159,12 +159,12 @@ def send_synchronization_pulse(broadcast_fn):
     broadcast_fn(Protocol.HighestTransaction())
 
 
-def extract_transaction(msg: Protocol.NewTransaction) -> Transaction:
-    return Transaction(number=msg.number, from_username=msg.from_username, to_username=msg.to_username, timestamp=msg.timestamp)
+def extract_transaction(msg: Protocol.NewTransaction) -> "Transaction":
+    return Transfer(trn=msg.number, from_username=msg.from_username, to_username=msg.to_username, timestamp=msg.timestamp)
 
 
-def pack_transaction(t: Transaction) -> Protocol.NewTransaction:
-    return Protocol.NewTransaction(number=t.number, from_username=t.from_username, to_username=t.to_username, timestamp=t.timestamp)
+def pack_transaction(t: "Transaction") -> Protocol.NewTransaction:
+    return Protocol.NewTransaction(number=t.trn, from_username=t.from_username, to_username=t.to_username, timestamp=t.timestamp)
 
 
 if __name__ == "__main__":
