@@ -1,8 +1,4 @@
 todo:
-- modify state to work properly with non-approved transactions
-    - requiring approval doesn't affect balance
-    - requiring approval + approval affect balance
-
 also: 'h'
     list all transactions
 
