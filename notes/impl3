@@ -1,0 +1,12 @@
+todo:
+- add 2 datatypes
+    - Transafer Requiring Approval
+    - Approval of Transfer 
+- allow to send Transafer Requiring Approval from the ui
+- allow [only the receipient] to send Approval of Transfer
+- allow to see transactions pending approval
+
+also:
+    list all transactions
+[?]
+- modify state to work properly with non-approved transactions

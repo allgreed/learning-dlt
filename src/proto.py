@@ -27,27 +27,25 @@ class NewTransaction(Message):
     from_username: str
     to_username: str
     timestamp: int
+    approved: bool = True
+    approve_trn: int = 0
 
-    STRUCT = "h4cI"
+    STRUCT = "h4cI?I"
 
     def encode(self) -> bytes:
         prepacked_chars = map(functools.partial(bytes, encoding="ascii"), [*self.from_username, *self.to_username])
 
-        int_timestamp = int(self.timestamp)  
-
-        return struct.pack(self.STRUCT, self.number, *prepacked_chars, int_timestamp)
+        return struct.pack(self.STRUCT, self.number, *prepacked_chars, self.timestamp, self.approved, self.approve_trn)
 
     @classmethod
     def from_parse(cls, args):
-        number = int(args[0])
-
         chars = b"".join(args[1:5])
-        timestamp = float(args[5])
-
         from_username = chars[0:2]
         to_username = chars[2:4]
 
-        return cls(number, from_username, to_username, timestamp)
+        _args = args[5:]
+
+        return cls(args[0], from_username, to_username, *_args)
 
 
 @dataclass
