@@ -16,7 +16,7 @@ def test_approved_transfers_are_the_same_as_ordinary_transfers():
     t_reference = Transfer(123, 456, "ab", "cd")
 
     t0 = TransferRequiringApproval(123, 456, "ab", "cd")
-    t1 = TransferApproval(789, approved_trn=123, timestamp=457)
+    t1 = TransferApproval(789, approved_trn=123, approver="cd", timestamp=457)
 
     assert s_reference.incorporate(t_reference)
     assert s.incorporate(t0)

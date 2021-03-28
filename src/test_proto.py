@@ -28,7 +28,7 @@ def test_works(msg):
 @pytest.mark.parametrize("t", [
     Transfer(123, 456, "ab", "cd"),
     TransferRequiringApproval(123, 456, "ab", "cd"),
-    TransferApproval(789, approved_trn=123, timestamp=457),
+    TransferApproval(789, approved_trn=123, approver="cd", timestamp=457),
 ])
 def test_pack_unpacks(t):
     packed = pack_transaction(t)

@@ -74,7 +74,7 @@ async def loop(state: State, username, broadcast_fn):
             trn = await ainput("Type trn [and hit enter]: ")
 
         try:
-            a = ApprovalIntent(trn)
+            a = ApprovalIntent(trn, approver=username)
             approve(a, state, username, broadcast_fn=broadcast_fn)
         except ValueError as e:
             print(e) 
@@ -217,7 +217,7 @@ def extract_transaction(msg: Protocol.NewTransaction) -> Transaction:
 
     if msg.approved_trn:
         cls = TransferApproval
-        args["approved_trn"] = msg.approved_trn
+        args.update({"approver": msg.to_username, "approved_trn": msg.approved_trn})
     else:
         args.update({"from_username": msg.from_username, "to_username" :msg.to_username})
 
@@ -231,12 +231,7 @@ def pack_transaction(t: Transaction) -> Protocol.NewTransaction:
     args = {"number": t.trn, "timestamp": t.timestamp}
 
     if isinstance(t, TransferApproval):
-        # TODO: to_username effectively doesn't matter, but should be set according to the spec :C 
-        # but that requires either:
-        # a) having access to state
-        # b) adding redundant information to the data model...
-        # c) some messy combination of the above with intermediary objects... <- which might work :D
-        args.update({"approved_trn": t.approved_trn, "to_username": "56", "from_username": "00"})
+        args.update({"approved_trn": t.approved_trn, "to_username": t.approver, "from_username": "00"})
 
     if isinstance(t, Transfer):
         args.update({"from_username": t.from_username, "to_username":t.to_username})

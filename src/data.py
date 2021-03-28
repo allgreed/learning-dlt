@@ -19,6 +19,7 @@ class TransferIntent:
 @dataclass
 class ApprovalIntent:
     trn: trn_t
+    approver: username_t
 
 
 @dataclass
@@ -42,12 +43,13 @@ class Transfer(Transaction):
 @dataclass
 class TransferApproval(Transaction):
     approved_trn: trn_t
+    approver: username_t  # this field is redundant, but required by the protocol
 
     # TODO: DRY! -> move this onto transaction and somehow extend? :D
     @classmethod
     def from_intent(cls, ai: ApprovalIntent, current_trn: int, now_fn=None) -> "TransferApproval":
         now_fn = now_fn or (lambda: int(datetime.utcnow().timestamp()))
-        return cls(current_trn + 1, now_fn(), approved_trn=ai.trn)
+        return cls(current_trn + 1, now_fn(), approved_trn=ai.trn, approver=ai.approver)
 
 
 @dataclass
