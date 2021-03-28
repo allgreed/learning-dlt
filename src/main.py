@@ -3,7 +3,7 @@ import os
 from typing import Sequence
 
 from src.util import acquire_user_initials_or_exit, ainput, setup_signal_handlers, send_upd_message, periodic
-from src.data import State, TransferIntent, Transfer, TransferRequiringApproval, TransferApproval, Transaction
+from src.data import State, TransferIntent, Transfer, TransferRequiringApproval, TransferApproval, Transaction, trn_t, ApprovalIntent
 import src.proto as Protocol
 
 
@@ -39,26 +39,43 @@ async def setup(host, port, state: State):
     print(f"Awarded 10 WBE to {username}")
     await asyncio.sleep(0)
 
-    # TODO: remove after testing
-    # state.incorporate(TransferRequiringApproval(123, 456, "ab", "xd"))
-
     return await loop(state, username, broadcast_fn=broadcast_fn)
 
 
 async def loop(state: State, username, broadcast_fn):
-    action = await ainput("Choose one of: [t]ransaction (to), [h]istory, [l]edger, [b]alance, [p]ending and hit enter\n")
+    action = await ainput("Choose one of: [t]ransaction (to) (pending=False), [a]prove (trn), [h]istory, [l]edger, [b]alance, [p]ending and hit enter\n")
 
     if action.startswith("t"):
         args = action.split(" ")
 
         if len(args) > 1:
             receipient = args[1]
+            pending = False
+
+            if len(args) > 2:
+                pending = True
         else:
             receipient = await ainput("Type username [and hit enter]: ")
+            _pending = await ainput("Should this be a pending transaction [y/n]: ")
+            pending = False if _pending != "y" else True 
 
         try:
-            ti = TransferIntent(to_username=receipient, from_username=username)
+            ti = TransferIntent(to_username=receipient, from_username=username, pending=pending)
             make_transfer(ti, state, broadcast_fn=broadcast_fn)
+        except ValueError as e:
+            print(e) 
+
+    elif action.startswith("a"):
+        args = action.split(" ")
+
+        if len(args) > 1:
+            trn = args[1]
+        else:
+            trn = await ainput("Type trn [and hit enter]: ")
+
+        try:
+            a = ApprovalIntent(trn)
+            approve(a, state, username, broadcast_fn=broadcast_fn)
         except ValueError as e:
             print(e) 
 
@@ -98,12 +115,11 @@ async def process_incoming_messages(q: Sequence[Protocol.Message], state: State)
     local_trn = state.highest_transaction_number
 
     for m in q:
-        print(m)
-
         if isinstance(m, Protocol.HighestTransaction):
             broadcast_fn(Protocol.HighestTransactionResponse(local_trn))
 
         elif isinstance(m, Protocol.NewTransaction):
+            print(m)
             t = extract_transaction(m)
 
             # was it suppose to mean incorporate or already have the same?
@@ -113,6 +129,7 @@ async def process_incoming_messages(q: Sequence[Protocol.Message], state: State)
                 broadcast_fn(Protocol.NotOk())
 
         elif isinstance(m, Protocol.GetTransaction):
+            print(m)
             t = state[m.number]
             broadcast_fn(t)
 
@@ -121,10 +138,13 @@ async def process_incoming_messages(q: Sequence[Protocol.Message], state: State)
             if network_trn > local_trn:
                 for i in range(max(local_trn, 0), network_trn + 1):
                     broadcast_fn(Protocol.GetTransaction(i))
+        else:
+            print(m)
 
     q.clear()
 
 
+# TODO: this validation should be with the model
 def make_transfer(ti: TransferIntent, state: State, broadcast_fn):
     t = Transfer.from_intent(ti, state.highest_transaction_number)
 
@@ -134,9 +154,25 @@ def make_transfer(ti: TransferIntent, state: State, broadcast_fn):
     state.incorporate(t)
     broadcast_fn(t)
 
+# TODO: this validation should be with the model
+def approve(a: ApprovalIntent, state, current_username, broadcast_fn):
+    trn = a.trn
+    t = TransferApproval.from_intent(a, state.highest_transaction_number)
+
+    t_to_approve = state[trn]
+    if type(t_to_approve) != TransferRequiringApproval:
+        raise ValueError("You can only approve pending transactions")
+
+    if t_to_approve.to_username != current_username:
+        raise ValueError("You can only approve your transactions")
+
+    state.incorporate(t)
+    broadcast_fn(t)
+    
+
 
 def broadcast(nodes, message):
-    if isinstance(message, Transfer):
+    if isinstance(message, Transaction):
         message = pack_transaction(message)
 
     assert isinstance(message, Protocol.Message)
@@ -196,6 +232,10 @@ def pack_transaction(t: Transaction) -> Protocol.NewTransaction:
 
     if isinstance(t, TransferApproval):
         # TODO: to_username effectively doesn't matter, but should be set according to the spec :C 
+        # but that requires either:
+        # a) having access to state
+        # b) adding redundant information to the data model...
+        # c) some messy combination of the above with intermediary objects... <- which might work :D
         args.update({"approved_trn": t.approved_trn, "to_username": "56", "from_username": "00"})
 
     if isinstance(t, Transfer):

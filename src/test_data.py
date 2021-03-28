@@ -26,4 +26,10 @@ def test_approved_transfers_are_the_same_as_ordinary_transfers():
 
 
 def test_transfer_from_intent():
-    Transfer.from_intent(TransferIntent("ab", "cd"), 5)
+    t = Transfer.from_intent(TransferIntent("ab", "cd"), 5)
+    assert type(t) is Transfer
+
+
+def test_transfer_from_intent_pending():
+    t = Transfer.from_intent(TransferIntent("ab", "cd", pending=True), 5)
+    assert type(t) is TransferRequiringApproval
