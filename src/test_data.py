@@ -1,14 +1,22 @@
 from src.data import *
 
     
-def test_unapproved_transfers_dont_affect_balance():
+def test_incoming_unapproved_transfers_dont_affect_balance():
     s = State()
-    ledger_reference = s.ledger
     t = TransferRequiringApproval(123, 456, "ab", "cd")
 
     assert s.incorporate(t)
 
-    assert s.ledger == ledger_reference
+    assert s.balance("cd") == 0
+
+
+def test_outgoing_unapproved_transfers_affect_balance():
+    s = State()
+    t = TransferRequiringApproval(123, 456, "ab", "cd")
+
+    assert s.incorporate(t)
+
+    assert s.balance("ab") == -1
 
 
 def test_approved_transfers_are_the_same_as_ordinary_transfers():

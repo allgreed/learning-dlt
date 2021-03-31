@@ -89,13 +89,20 @@ class State:
         ledger = defaultdict(lambda: 0)
         approved_trns, pending, real = self._sorted_transactions()
 
-        effective_transfers = real + [t for t in pending if t.trn in approved_trns]
+        approved_transfers = [t for t in pending if t.trn in approved_trns]
+        awaiting_transfers = [t for t in pending if t.trn not in approved_trns]
+        effective_transfers = real + approved_transfers
 
         for t in effective_transfers:
             amount = 1
 
             ledger[t.from_username] -= amount
             ledger[t.to_username] += amount
+
+        for t in awaiting_transfers:
+            amount = 1
+
+            ledger[t.from_username] -= amount
 
         return ledger
 
