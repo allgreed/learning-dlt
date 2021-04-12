@@ -10,6 +10,7 @@ let
   pythonPkgs = python-packages: with python-packages; [
       ptpython # used for dev
       pytest # testing
+      pytest-mock # testing
       pydantic
     ];
   pythonCore = pkgs.python38;
