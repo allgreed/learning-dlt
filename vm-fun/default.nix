@@ -15,5 +15,6 @@ pkgs.mkShell {
     git
     gnumake
     jdk
+    jasmin
   ];
 }
