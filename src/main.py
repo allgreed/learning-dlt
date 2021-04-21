@@ -189,56 +189,19 @@ def _main():
     loop = asyncio.get_event_loop()
     setup_signal_handlers()
 
-    # actually, is this queue needed?
-    q = []
     state = State()
 
-    class CustomProtocol(asyncio.DatagramProtocol):
-        def datagram_received(self, data, addr):
-            msg = Protocol.decode(data)
-            q.append(msg)
-            loop = asyncio.get_event_loop()
-            loop.create_task(process_incoming_messages(q, state))
+    # class CustomProtocol(asyncio.DatagramProtocol):
+        # def datagram_received(self, data, addr):
+            # msg = Protocol.decode(data)
+            # asyncio.get_event_loop().create_task(process_incoming_messages(msg, state))
+            pass
 
-    t = loop.create_datagram_endpoint(CustomProtocol, local_addr=(host, port))
+    # t = loop.create_datagram_endpoint(CustomProtocol, local_addr=(host, port))
     loop.run_until_complete(t)
 
     loop.create_task(setup(host, port, state))
     loop.run_forever()
-
-
-def send_synchronization_pulse(broadcast_fn):
-    broadcast_fn(Protocol.HighestTransaction())
-
-
-def extract_transaction(msg: Protocol.NewTransaction) -> Transaction:
-    args = {"trn": msg.number, "timestamp": msg.timestamp}
-    cls = Transfer
-
-    if msg.approved_trn:
-        cls = TransferApproval
-        args.update({"approver": msg.to_username, "approved_trn": msg.approved_trn})
-    else:
-        args.update({"from_username": msg.from_username, "to_username" :msg.to_username})
-
-    if not msg.approved:
-        cls = TransferRequiringApproval
-        
-    return cls(**args)
-
-
-def pack_transaction(t: Transaction) -> Protocol.NewTransaction:
-    args = {"number": t.trn, "timestamp": t.timestamp}
-
-    if isinstance(t, TransferApproval):
-        args.update({"approved_trn": t.approved_trn, "to_username": t.approver, "from_username": "00"})
-
-    if isinstance(t, Transfer):
-        args.update({"from_username": t.from_username, "to_username":t.to_username})
-
-    if isinstance(t, TransferRequiringApproval):
-        args["approved"] = False
-    return Protocol.NewTransaction(**args)
 
 
 if __name__ == "__main__":
