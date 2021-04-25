@@ -1,14 +1,16 @@
 .DEFAULT_GOAL := help
+SOURCES := src/main.py src/data.py
+TESTS := src/test_data.py
 
 # Porcelain
 # ###############
 .PHONY: env-up env-down env-recreate container run run-watch build lint test
 
 run: setup ## run the app
-	python src/main.py
+	APP_PORT=1234 python src/main.py
 
-run-watch: ## run the app in watch mode - for rapid development
-	@echo "Not implemented"; false
+run-watch: setup ## run the app in dev mode, hot reloading
+	ls $(SOURCES) Makefile | entr -cr make run
 
 env-up: ## set up dev environment
 	@echo "Not implemented"; false
@@ -26,6 +28,9 @@ lint: setup ## run static analysis
 
 test: setup ## run all tests
 	python -m pytest
+
+test-watch: setup ## run tests in watch mode
+	ls $(SOURCES) $(TESTS) | entr -c make test
 
 container: build ## create container
 	#docker build -t lmap .

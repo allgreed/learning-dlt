@@ -1,60 +1,71 @@
-from typing import Dict, Set
+from typing import Dict, Set, Sequence
 from datetime import datetime
 from collections import defaultdict
 
 from pydantic.dataclasses import dataclass
 from pydantic import constr, conint
+from ecdsa import SigningKey as SKey, SECP256k1
+from ecdsa.keys import SigningKey, VerifyingKey
 
 
+# TODO: expand this
 username_t = constr(min_length=2, max_length=2)
-trn_t = conint(ge=0)
+hash_digest_t = int
+nonce_t = conint(ge=0)
+amount_t = conint(ge=1, le=1)
 
 
-@dataclass
-class TransferIntent:
-    from_username: username_t
-    to_username: username_t
-    pending: bool = False
+class Wallet:
+    def __init__(self, sk: SigningKey, vk: VerifyingKey):
+        self.signing_key = sk
+        self.verifying_key = vk
 
-@dataclass
-class ApprovalIntent:
-    trn: trn_t
-    approver: username_t
+    @classmethod
+    def new(cls):
+        sk = SigningKey.generate(curve=SECP256k1)
+        vk = sk.verifying_key
+        return cls(sk, vk)
 
 
 @dataclass
 class Transaction:
-    trn: trn_t
-    timestamp: int
+    pass
 
 
 @dataclass
 class Transfer(Transaction):
     from_username: username_t
     to_username: username_t
-
-    @staticmethod
-    def from_intent(ti: TransferIntent, current_trn: int, now_fn=None) -> "Transfer":
-        cls = TransferRequiringApproval if ti.pending else Transfer
-        now_fn = now_fn or (lambda: int(datetime.utcnow().timestamp()))
-        return cls(current_trn + 1, now_fn(), ti.from_username, ti.to_username)
+    amount: amount_t = 1
 
 
 @dataclass
-class TransferApproval(Transaction):
-    approved_trn: trn_t
-    approver: username_t  # this field is redundant, but required by the protocol
+class Block:
+    # TODO: write custom validator that it's actually digest-like
+    previous_block_hash: hash_digest_t
+    # TODO: constraint this retreoactively by the protocol
+    nonce: nonce_t
+    timestamp: int
+    transactions: Sequence[Transaction]
 
-    # TODO: DRY! -> move this onto transaction and somehow extend? :D
+    def _mine(previous_block_hash: hash_digest_t, timestamp: int, transactions: Sequence[Transaction]) -> nonce_t:
+        # TODO: do the actual hashing and mining
+        # TODO: deterministically cast transactions into JSON array, have a seperate method for that -> it's already sequential, so JSON dumps? :D
+
+        return 5
+
+    @classmethod():
+    def pack(cls, previous_block_hash: hash_digest_t, transactions: Sequence[Transaction], now_fn=None):
+        now_fn = now_fn or (lambda: int(datetime.utcnow().timestamp()))
+
+        ts = now_fn()
+        nonce = self._mine(previous_block_hash=previous_block_hash, nonce=0, timestamp=ts, transactions=transactions)
+
+        return cls(previous_block_hash=previous_block_hash, nonce=nonce, timestamp=ts, transactions=transactions)
+
     @classmethod
-    def from_intent(cls, ai: ApprovalIntent, current_trn: int, now_fn=None) -> "TransferApproval":
-        now_fn = now_fn or (lambda: int(datetime.utcnow().timestamp()))
-        return cls(current_trn + 1, now_fn(), approved_trn=ai.trn, approver=ai.approver)
-
-
-@dataclass
-class TransferRequiringApproval(Transfer):
-    pass
+    def genesis(cls, transactions: Sequence[Transaction], now_fn=None):
+        return cls.pack(previous_block_hash=0, transactions)
 
 
 class State:    

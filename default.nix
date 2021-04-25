@@ -12,6 +12,7 @@ let
       pytest # testing
       pytest-mock # testing
       pydantic
+      ecdsa
     ];
   pythonCore = pkgs.python38;
   myPython = pythonCore.withPackages pythonPkgs;
