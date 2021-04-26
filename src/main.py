@@ -5,18 +5,17 @@ from typing import Sequence, Dict, Tuple
 from ecdsa import SigningKey, SECP256k1
 
 from src.util import setup_signal_handlers, send_upd_message, periodic
-from src.data import Chain, Wallet, BlockIntent, Block, Transfer, username_t
+from src.data import Chain, Wallet, BlockIntent, Block, Transfer, username_t, QUARRY_ACCOUNT
 from src.ui import UserInterfaceIOC
-# import src.proto as Protocol
 
 
 async def setup(host, port):
     print(f"Starting node at {host}:{port}")
 
     wallet = Wallet.new()
-    print("my account is:", wallet.incoming_account)
+    print("my account is:", wallet.account)
 
-    t = Transfer.coinbase(miner_account=wallet.incoming_account)
+    t = Transfer.coinbase(miner_account=wallet.account)
     gbi = BlockIntent.genesis(transactions=[t])
     b = Block.mine_from_intent(gbi)
     print("found block:", b.hash, "[genesis]")
@@ -28,46 +27,36 @@ async def setup(host, port):
 
 
 async def loop(wallet: Wallet, chain: Chain):
+    pending_transactions = []
+
     class UI(UserInterfaceIOC):
-        def transfer(self):
-            ...
+        def transfer(self, receipient: username_t):
+            # TODO: ensure balance >= 1
+            t = Transfer(from_account=wallet.account, to_account=receipient)
+            pending_transactions.append(t)
 
         def history(self) -> Sequence[str]:
-            # for t in sorted(state.transactions.values(), key=lambda t: t.timestamp):
-            return ["a", "b", "c"]
+            tt = list(chain.transactions)
+            return len(tt), tt
 
         def ledger(self) -> Dict[str, int]:
-            # sorted(state.ledger.items(), key=lambda t: t[0])
-            return {
-                "aaa": 5,
-                "bbb": 7,
-            }
+            return chain.ledger
 
         def balance(self) -> Tuple[username_t, int]:
-            return ("stefan", 5)
+            return chain.balance(wallet.account)
 
 
-    ui = UI()
+    ui = UI(you=wallet.account[:8], quarry=QUARRY_ACCOUNT)
     await ui.execute()
 
-    t = Transfer.coinbase(miner_account=wallet.incoming_account)
-    bi = BlockIntent.next(previous=chain.latest_block, transactions=[t])
+    t = Transfer.coinbase(miner_account=wallet.account)
+    pending_transactions.append(t)
+    bi = BlockIntent.next(previous=chain.latest_block, transactions=pending_transactions)
     b = Block.mine_from_intent(bi)
     print("found block:", b.hash)
     assert chain.try_incorporate(b)
 
     return await loop(wallet, chain)
-
-
-# TODO: this validation should be with the model
-# def make_transfer(ti: TransferIntent, state: State, broadcast_fn):
-    # t = Transfer.from_intent(ti, state.highest_transaction_number)
-
-    # if state.balance(t.from_username) < 1 and not t.from_username == MINE_USERNAME:
-        # raise ValueError("You need to have at least 1 WBE to make a transaction")
-
-    # state.incorporate(t)
-    # broadcast_fn(t)
 
 
 def main():

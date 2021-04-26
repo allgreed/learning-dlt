@@ -30,7 +30,7 @@ class Wallet:
         self.verifying_key = vk
 
     @property
-    def incoming_account(self) -> username_t:
+    def account(self) -> username_t:
         return self.verifying_key.to_string().hex()
 
     @classmethod
@@ -144,9 +144,6 @@ class Chain:
     def latest_block(self):
         return self.blocks[self.latest]
 
-    # def __getitem__(self, trn: int):
-        # return self.transactions[trn]
-
     def try_incorporate(self, b: Block) -> bool:
         self._append(b)
         return True
@@ -163,41 +160,22 @@ class Chain:
             # else:
                 # return False
 
-    # def balance(self, username: username_t):
-        # return self.ledger[username]
+    def balance(self, username: username_t):
+        return self.ledger[username]
 
-    # @property
-    # def ledger(self):
-        # ledger = defaultdict(lambda: 0)
-        # approved_trns, pending, real = self._sorted_transactions()
+    @property
+    def ledger(self):
+        ledger = defaultdict(lambda: 0)
 
-        # approved_transfers = [t for t in pending if t.trn in approved_trns]
-        # awaiting_transfers = [t for t in pending if t.trn not in approved_trns]
-        # effective_transfers = real + approved_transfers
+        for b in self.blocks.values():
+            for t in b.transactions:
+                amount = t.amount
+                ledger[t.from_account] -= amount
+                ledger[t.to_account] += amount
 
-        # for t in effective_transfers:
-            # amount = 1
+        return ledger
 
-            # ledger[t.from_username] -= amount
-            # ledger[t.to_username] += amount
-
-        # for t in awaiting_transfers:
-            # amount = 1
-
-            # ledger[t.from_username] -= amount
-
-        # return ledger
-
-    # def _sorted_transactions(self):
-        # approved_trns, pending, real = set(), [], [] 
-        # for t in self.transactions.values():
-            # if type(t) is TransferApproval:
-                # approved_trns.add(t.approved_trn)
-            # elif type(t) is TransferRequiringApproval:
-                # pending.append(t)
-            # elif type(t) is Transfer:
-                # real.append(t)
-            # else: # impossible
-                # assert False, "Unsupported type in transaction sorting"
-
-        # return approved_trns, pending, real
+    @property
+    def transactions(self):
+        transaction_packs = map(lambda b: b.transactions, self.blocks.values())
+        return itertools.chain(*transaction_packs)
