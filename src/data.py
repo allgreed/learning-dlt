@@ -201,7 +201,3 @@ class Chain:
                 # assert False, "Unsupported type in transaction sorting"
 
         # return approved_trns, pending, real
-
-    # def pending_for(self, username: username_t):
-        # approved_trns, pending, _ = self._sorted_transactions()
-        # return [t for t in pending if t.trn not in approved_trns and t.to_username == username]

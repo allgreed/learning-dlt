@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-SOURCES := src/main.py src/data.py
+SOURCES := src/main.py src/data.py src/ui.py src/utils.py
 TESTS := src/test_data.py
 
 # Porcelain
