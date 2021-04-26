@@ -10,9 +10,6 @@ from src.data import State, Wallet
 # import src.proto as Protocol
 
 
-MINE_USERNAME = "77"
-
-
 async def setup(host, port, state: State):
     wallet = Wallet.new()
 
@@ -20,7 +17,6 @@ async def setup(host, port, state: State):
         (host, 5555),
         (host, 5556),
         (host, 5557),
-        (host, 9009), # for kicks
     ]
     nodes = [n for n in nodes_candidates if n[0] != host or n[1] != port]
 
@@ -34,8 +30,10 @@ async def setup(host, port, state: State):
     # sync every 5 seconds and now
     # _loop = asyncio.get_event_loop()
     # _loop.create_task(periodic(lambda: send_synchronization_pulse(broadcast_fn), 5))
-    await asyncio.sleep(1)
-    print("initial node sync complete")
+    # await asyncio.sleep(1)
+    # print("initial node sync complete")
+
+    # TODO: avoid blocking when mining 
 
     # TODO: clean the parameters a bit
     return await loop(state, "ble", broadcast_fn=broadcast_fn)

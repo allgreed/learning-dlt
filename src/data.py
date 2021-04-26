@@ -1,4 +1,7 @@
-from typing import Dict, Set, Sequence
+import itertools
+import hashlib
+import json
+from typing import Dict, Set, Sequence, Optional
 from datetime import datetime
 from collections import defaultdict
 
@@ -8,11 +11,12 @@ from ecdsa import SigningKey as SKey, SECP256k1
 from ecdsa.keys import SigningKey, VerifyingKey
 
 
-# TODO: expand this
+# TODO: expand this -> with actual constraints
 username_t = constr(min_length=2, max_length=2)
-hash_digest_t = int
+hash_digest_t = str
 nonce_t = conint(ge=0)
 amount_t = conint(ge=1, le=1)
+serialized_block_payload = bytes
 
 
 class Wallet:
@@ -27,45 +31,88 @@ class Wallet:
         return cls(sk, vk)
 
 
-@dataclass
+@dataclass(frozen=True)
 class Transaction:
     pass
 
 
-@dataclass
+@dataclass(frozen=True)
 class Transfer(Transaction):
     from_username: username_t
     to_username: username_t
     amount: amount_t = 1
 
 
-@dataclass
-class Block:
-    # TODO: write custom validator that it's actually digest-like
+@dataclass(frozen=True)
+class BlockIntent:
     previous_block_hash: hash_digest_t
-    # TODO: constraint this retreoactively by the protocol
-    nonce: nonce_t
-    timestamp: int
     transactions: Sequence[Transaction]
-
-    def _mine(previous_block_hash: hash_digest_t, timestamp: int, transactions: Sequence[Transaction]) -> nonce_t:
-        # TODO: do the actual hashing and mining
-        # TODO: deterministically cast transactions into JSON array, have a seperate method for that -> it's already sequential, so JSON dumps? :D
-
-        return 5
-
-    @classmethod():
-    def pack(cls, previous_block_hash: hash_digest_t, transactions: Sequence[Transaction], now_fn=None):
-        now_fn = now_fn or (lambda: int(datetime.utcnow().timestamp()))
-
-        ts = now_fn()
-        nonce = self._mine(previous_block_hash=previous_block_hash, nonce=0, timestamp=ts, transactions=transactions)
-
-        return cls(previous_block_hash=previous_block_hash, nonce=nonce, timestamp=ts, transactions=transactions)
+    timestamp: int
 
     @classmethod
-    def genesis(cls, transactions: Sequence[Transaction], now_fn=None):
-        return cls.pack(previous_block_hash=0, transactions)
+    def genesis(cls, transactions: Sequence[Transaction], now_fn=None) -> "BlockIntent":
+        now_fn = now_fn or (lambda: int(datetime.utcnow().timestamp()))
+        ts = now_fn()
+
+        # TODO: somehow link it to is_genesis block method
+        return cls(previous_block_hash=0, timestamp=ts, transactions=transactions)
+
+    @classmethod
+    def next(cls, previous: "Block", transactions: Sequence[Transaction], now_fn=None) -> "BlockIntent":
+        now_fn = now_fn or (lambda: int(datetime.utcnow().timestamp()))
+        ts = now_fn()
+
+        return cls(previous_block_hash=previous.hash(), timestamp=ts, transactions=transactions)
+
+    def _serialize(self, nonce: Optional[nonce_t]) -> serialized_block_payload:
+        if nonce is None:
+            nonce = self.nonce
+            # TODO: should this be handled better?
+
+        # TODO: deterministically cast transactions into JSON array, have a seperate method for that -> it's already sequential, so JSON dumps? :D - but it can fail on stuff like key ordering -> test it!
+        data = self.__dict__
+        data["nonce"] = nonce
+        dump = json.dumps(data)
+        return dump.encode("utf-8")
+
+
+@dataclass(frozen=True)
+class Block(BlockIntent):
+    # TODO: make sure all fields from BlockIntent are here
+    nonce: nonce_t
+
+    @property
+    def hash(self) -> hash_digest_t:
+        return self._hash(self._serialize())
+
+    @staticmethod
+    def _hash(payload: serialized_block_payload) -> hash_digest_t:
+        m = hashlib.sha256()
+        m.update(payload)
+        result = m.digest().hex()
+        print(result)
+        return result
+
+    @staticmethod
+    def _is_passed_difficulty(digest: hash_digest_t) -> bool:
+        raise NotImplementedError("AAAAA")
+
+    @staticmethod
+    def _mine(bi: BlockIntent, is_nonce_found_fn=None) -> nonce_t:
+        is_nonce_found_fn = is_nonce_found_fn or Block._is_passed_difficulty
+
+        for nonce_candidate in itertools.count(start=0):
+            payload = bi._serialize(nonce=nonce_candidate)
+
+            if is_nonce_found_fn(Block._hash(payload)):
+                return nonce_candidate
+
+    @classmethod
+    def mine_from_intent(cls, bi: BlockIntent, mine_fn=None):
+        mine_fn = mine_fn or Block._mine
+        nonce = mine_fn(bi)
+
+        return cls(previous_block_hash=bi.previous_block_hash, nonce=nonce, timestamp=bi.timestamp, transactions=bi.transactions)
 
 
 class State:    
