@@ -13,6 +13,7 @@ let
       pytest-mock # testing
       pydantic
       ecdsa
+      gmpy2
     ];
   pythonCore = pkgs.python38;
   myPython = pythonCore.withPackages pythonPkgs;

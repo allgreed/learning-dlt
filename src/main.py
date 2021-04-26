@@ -5,41 +5,28 @@ from typing import Sequence
 from ecdsa import SigningKey, SECP256k1
 
 from src.util import acquire_user_initials_or_exit, ainput, setup_signal_handlers, send_upd_message, periodic
-from src.data import State, Wallet
-# , TransferIntent, Transfer, TransferRequiringApproval, TransferApproval, Transaction, trn_t, ApprovalIntent
+from src.data import Chain, Wallet, BlockIntent, Block, Transfer
 # import src.proto as Protocol
 
 
-async def setup(host, port, state: State):
+async def setup(host, port):
+    print(f"Starting node at {host}:{port}")
+
     wallet = Wallet.new()
+    print("my account is:", wallet.incoming_account)
 
-    nodes_candidates = [
-        (host, 5555),
-        (host, 5556),
-        (host, 5557),
-    ]
-    nodes = [n for n in nodes_candidates if n[0] != host or n[1] != port]
+    t = Transfer.coinbase(miner_account=wallet.incoming_account)
+    gbi = BlockIntent.genesis(transactions=[t])
+    b = Block.mine_from_intent(gbi)
+    print("found block:", b.hash, "[genesis]")
+    
+    chain = Chain()
+    assert chain.try_incorporate(b)
 
-    broadcast_fn = lambda msg: broadcast(nodes, msg)
-    # this is a global, mutable variable, because we're in the 80's
-    global BROADCAST_FN
-    BROADCAST_FN = broadcast_fn
-
-    print(f"Starting node at {host}:{port}, other nodes are: {nodes}")
-
-    # sync every 5 seconds and now
-    # _loop = asyncio.get_event_loop()
-    # _loop.create_task(periodic(lambda: send_synchronization_pulse(broadcast_fn), 5))
-    # await asyncio.sleep(1)
-    # print("initial node sync complete")
-
-    # TODO: avoid blocking when mining 
-
-    # TODO: clean the parameters a bit
-    return await loop(state, "ble", broadcast_fn=broadcast_fn)
+    return await loop(wallet, chain)
 
 
-async def loop(state: State, username, broadcast_fn):
+async def loop(wallet: Wallet, chain: Chain):
     # TODO: seperate UI parts from actual action
     # action = await ainput("Choose one of: [t]ransaction (to) (pending=False), [a]prove (trn), [h]istory, [l]edger, [b]alance, [p]ending and hit enter\n")
 
@@ -104,39 +91,14 @@ async def loop(state: State, username, broadcast_fn):
     # else:
         # pass
 
-    return await loop(state, username, broadcast_fn=broadcast_fn)
 
+    t = Transfer.coinbase(miner_account=wallet.incoming_account)
+    bi = BlockIntent.next(previous=chain.latest_block, transactions=[t])
+    b = Block.mine_from_intent(bi)
+    print("found block:", b.hash)
+    assert chain.try_incorporate(b)
 
-# async def process_incoming_messages(m: Protocol.Message, state: State) -> None:
-    # broadcast_fn = BROADCAST_FN
-
-    # local_trn = state.highest_transaction_number
-
-    # if isinstance(m, Protocol.HighestTransaction):
-        # broadcast_fn(Protocol.HighestTransactionResponse(local_trn))
-
-    # elif isinstance(m, Protocol.NewTransaction):
-        # print(m)
-        # t = extract_transaction(m)
-
-        # # was it suppose to mean incorporate or already have the same?
-        # if state.incorporate(t):
-            # broadcast_fn(Protocol.Ok())
-        # else:
-            # broadcast_fn(Protocol.NotOk())
-
-    # elif isinstance(m, Protocol.GetTransaction):
-        # print(m)
-        # t = state[m.number]
-        # broadcast_fn(t)
-
-    # elif isinstance(m, Protocol.HighestTransactionResponse):
-        # network_trn = m.number
-        # if network_trn > local_trn:
-            # for i in range(max(local_trn, 0), network_trn + 1):
-                # broadcast_fn(Protocol.GetTransaction(i))
-    # else:
-        # print(m)
+    return await loop(wallet, chain)
 
 
 # TODO: this validation should be with the model
@@ -149,54 +111,17 @@ async def loop(state: State, username, broadcast_fn):
     # state.incorporate(t)
     # broadcast_fn(t)
 
-# TODO: this validation should be with the model
-# def approve(a: ApprovalIntent, state, current_username, broadcast_fn):
-    # trn = a.trn
-    # t = TransferApproval.from_intent(a, state.highest_transaction_number)
 
-    # t_to_approve = state[trn]
-    # if type(t_to_approve) != TransferRequiringApproval:
-        # raise ValueError("You can only approve pending transactions")
-
-    # if t_to_approve.to_username != current_username:
-        # raise ValueError("You can only approve your transactions")
-
-    # state.incorporate(t)
-    # broadcast_fn(t)
-    
-
-
-def broadcast(nodes, message):
-    if isinstance(message, Transaction):
-        message = pack_transaction(message)
-
-    assert isinstance(message, Protocol.Message)
-    message = Protocol.encode(message)
-
-    for n in nodes:
-        send_upd_message(*n, message)
-
-
-def _main():
+def main():
     host = "127.0.0.1"
     port = int(os.environ["APP_PORT"])
 
     loop = asyncio.get_event_loop()
     setup_signal_handlers()
 
-    state = State()
-
-    # class CustomProtocol(asyncio.DatagramProtocol):
-        # def datagram_received(self, data, addr):
-            # msg = Protocol.decode(data)
-            # asyncio.get_event_loop().create_task(process_incoming_messages(msg, state))
-
-    # t = loop.create_datagram_endpoint(CustomProtocol, local_addr=(host, port))
-    # loop.run_until_complete(t)
-
-    loop.create_task(setup(host, port, state))
+    loop.create_task(setup(host, port))
     loop.run_forever()
 
 
 if __name__ == "__main__":
-    _main()
+    main()
