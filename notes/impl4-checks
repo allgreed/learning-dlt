@@ -1,0 +1,3 @@
+- username / private key length => if it's too long or too short the transfer would simply be wasted
+- need to have positive balance
+- ensure postive balance even for the transactions that were not mined yet (as they will be mined soon)
