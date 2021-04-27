@@ -107,7 +107,8 @@ class Block(BlockIntent):
 
     @staticmethod
     def _is_passed_difficulty(digest: hash_digest_t) -> bool:
-        return digest.startswith("0000")
+        # return digest.startswith("0000")
+        return digest.startswith("00000")
 
     @staticmethod
     def _mine(bi: BlockIntent, is_nonce_found_fn=None) -> nonce_t:
@@ -160,11 +161,7 @@ class Chain:
             # else:
                 # return False
 
-    def balance(self, username: username_t):
-        return self.ledger[username]
-
-    @property
-    def ledger(self):
+    def ledger(self, additional_transactions: Sequence[Transaction]):
         ledger = defaultdict(lambda: 0)
 
         for b in self.blocks.values():
@@ -172,6 +169,11 @@ class Chain:
                 amount = t.amount
                 ledger[t.from_account] -= amount
                 ledger[t.to_account] += amount
+
+        for t in additional_transactions:
+            amount = t.amount
+            ledger[t.from_account] -= amount
+            ledger[t.to_account] += amount
 
         return ledger
 
