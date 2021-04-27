@@ -7,7 +7,7 @@ TESTS := src/test_data.py
 .PHONY: env-up env-down env-recreate container run run-watch build lint test
 
 run: setup ## run the app
-	APP_PORT=1234 python src/main.py
+	APP_COOL_MINER=y APP_PORT=1234 python src/main.py
 
 run-watch: setup ## run the app in dev mode, hot reloading
 	ls $(SOURCES) Makefile | entr -cr make run

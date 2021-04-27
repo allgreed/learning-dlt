@@ -107,8 +107,7 @@ class Block(BlockIntent):
 
     @staticmethod
     def _is_passed_difficulty(digest: hash_digest_t) -> bool:
-        # return digest.startswith("0000")
-        return digest.startswith("00000")
+        return digest.startswith("0000")
 
     @staticmethod
     def _mine(bi: BlockIntent, is_nonce_found_fn=None) -> nonce_t:
