@@ -147,18 +147,6 @@ class Chain:
     def try_incorporate(self, b: Block) -> bool:
         self._append(b)
         return True
-        # if t.trn not in self.transactions:
-            # self._append(t)
-            # return True
-        # else:
-            # matching = self.transactions[t.trn]
-            # if matching.timestamp > t.timestamp:
-                # self._append(t)
-                # return True
-            # elif matching == t:
-                # return True
-            # else:
-                # return False
 
     def ledger(self, additional_transactions: Sequence[Transaction]):
         ledger = defaultdict(lambda: 0)

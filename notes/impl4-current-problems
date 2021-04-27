@@ -1,0 +1,29 @@
+- doesn't work with more than 1 node
+- collisions may be a problem?
+- internal types not properly constrained
+- private key generated on every node startup (security concern)
+- special case for quarry account
+- UI IoC could be more expressive I guess
+- miner would be anoying to resync
+
+not-solved:
+    - WBE is not divisible
+
+could-be-solved:
+    - there is no caching, the state has to be recomputed every time from the list of all transactions
+    - there is no persistency, if a node goes out for whatever reason [including update] it has to redownload every transaction
+    - there is no way of knowing who if the transaction issuance was authorized
+    - history of transactions can be easily rewritten by malicious actor having access to the network for a short time
+
+===
+
+solved:
+    - the total number of users is limited to 9025 ( + ~ same amount for "shadow accounts" for mines)
+
+not-applicable-yet:
+    - consensus is not bizantyne tolerant - malicious node could easily corrupt the state by spreading false data
+    - consensus cannot be achieved if transactions are issued in the same nanosecond
+    - double spending is not verified on the receiving node
+    - protocol is very chatty (sometimes it took 30-40 messages to reach consensus in a network of 3 nodes)
+    - messages are broadcasted [which affects network congestion]
+    - there is no way of handling dropped or delayed messages

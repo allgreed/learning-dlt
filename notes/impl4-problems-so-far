@@ -1,4 +1,4 @@
-- the total number of users is limited to 16384 (including "shadow accounts" for mines)
+- the total number of users is limited to 9025 ( + ~ same amount for "shadow accounts" for mines)
 - WBE is not divisible
 - there is no caching, the state has to be recomputed every time from the list of all transactions
 - there is no persistency, if a node goes out for whatever reason [including update] it has to redownload every transaction
