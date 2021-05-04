@@ -24,3 +24,15 @@ def setup_signal_handlers():
         os.kill(os.getpid(), 9)
 
     signal.signal(signal.SIGINT, signal_handler)
+
+
+def _subslice(s, v):
+    offset, length = v
+
+    start = s.start + offset
+    stop = s.stop
+
+    if length is not None:
+        stop = start + length
+
+    return slice(start, stop)

@@ -15,9 +15,11 @@ from ecdsa.keys import SigningKey, VerifyingKey
 # TODO: expand this -> with actual constraints
 username_t = constr(min_length=2, max_length=128)
 hash_digest_t = str
+
 nonce_t = conint(ge=0)
 amount_t = conint(ge=1, le=1)
 serialized_block_payload = bytes
+timestamp_t = conint(ge=0)
 
 
 GENESIS_BLOCK_PREV_HASH: hash_digest_t = "0"
@@ -64,6 +66,7 @@ class Transfer(Transaction):
 class BlockIntent:
     previous_block_hash: hash_digest_t
     transactions: Sequence[Transaction]
+    # TODO: constrain to positive ints only, find all usages
     timestamp: int
 
     @classmethod
