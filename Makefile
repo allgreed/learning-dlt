@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 SOURCES := src/main.py src/data.py src/ui.py src/utils.py src/miner.py src/proto.py
-TESTS := src/test_data.py src/test_proto.py
+TESTS := src/test_data.py src/test_proto.py src/test_main.py
 PORT := 5555
 
 # Porcelain

@@ -147,9 +147,16 @@ class Chain:
     def latest_block(self):
         return self.blocks[self.latest]
 
+    @property
+    def hashes(self):
+        return self.blocks.keys()
+
     def try_incorporate(self, b: Block) -> bool:
         self._append(b)
         return True
+
+    def __len__(self):
+        return len(self.blocks)
 
     def ledger(self, additional_transactions: Sequence[Transaction]):
         ledger = defaultdict(lambda: 0)
@@ -166,6 +173,9 @@ class Chain:
             ledger[t.to_account] += amount
 
         return ledger
+
+    def __getitem__(self, key):
+        return self.blocks[key]
 
     @property
     def transactions(self):

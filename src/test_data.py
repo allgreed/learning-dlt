@@ -1,11 +1,15 @@
 import pytest
 import functools
+import dataclasses
+
 from src.data import *
+
 
 @pytest.fixture
 def quick_mine():
     return functools.partial(Block._mine, is_nonce_found_fn=lambda n: True)
-    
+
+
 def test_mine_empty_genesis(quick_mine):
     bi = BlockIntent.genesis(transactions=[])
     genesis_block = Block.mine_from_intent(bi, mine_fn=quick_mine)
@@ -34,6 +38,19 @@ def test_genesis_is_genesis(quick_mine):
 
 def test_difficulty():
     assert Block._is_passed_difficulty("0000dfjlskfjsldkfjslkj")
+
+
+def test_length():
+    c = Chain()
+    b = Block(nonce=5, previous_block_hash="aaa", transactions=[], timestamp=1, hash="a")
+
+    assert len(c) == 0
+
+    c.try_incorporate(b)
+    assert len(c) == 1
+
+    c.try_incorporate(dataclasses.replace(b, hash="b"))
+    assert len(c) == 2
 
 
 # def test_incoming_unapproved_transfers_dont_affect_balance():
