@@ -1,0 +1,5 @@
+Tradeoffs:
+- marginally easier to implement
+- marginally easier to troubleshoot (json is human readable-ish)
+- potentially larger [de]serialization overhead => "parsing" via offsets + struct unpacking is probably much faster
+- larger payload size => pure binary protocol would allow much more compression

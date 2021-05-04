@@ -7,6 +7,18 @@ let
     # obtain via `git ls-remote https://github.com/nixos/nixpkgs-channels nixos-unstable`
   };
   pkgs = import nixpkgs { config = {}; };
+  statemachine = pkgs.python38Packages.buildPythonPackage rec {
+      pname = "python-statemachine";
+      version = "0.8.0";
+
+      src = pkgs.python38Packages.fetchPypi{
+        inherit version;
+        inherit pname;
+        sha256 = "1bpbm68db4hviiprk4ypwrmid8cyxha93h7ahy21kcfq9qghr9zn";
+      };
+
+      doCheck = false;
+  };
   pythonPkgs = python-packages: with python-packages; [
       ptpython # used for dev
       pytest # testing
@@ -14,6 +26,7 @@ let
       pydantic
       ecdsa
       gmpy2
+      statemachine
     ];
   pythonCore = pkgs.python38;
   myPython = pythonCore.withPackages pythonPkgs;

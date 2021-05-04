@@ -14,7 +14,7 @@ async def periodic(f, interval: float):
         await asyncio.sleep(interval)
 
 
-def send_upd_message(host, port, message) -> None:
+def send_udp_message(host, port, message) -> None:
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.sendto(message, (host, port))
 

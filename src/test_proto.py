@@ -9,8 +9,7 @@ import src.proto as Protocol
 
 
 protocol_example_messages = [] 
-for i in sum([ [(cls, example_payload) for example_payload in cls.EXAMPLE_PAYLOADS] for cls in Protocol.Message.__subclasses__()], []):
-    cls, payload = i
+for cls, payload in sum([ [(cls, example_payload) for example_payload in cls.EXAMPLE_PAYLOADS] for cls in Protocol.Message.__subclasses__()], []):
     try:
         example = cls.from_parse(**payload)
     except TypeError:
