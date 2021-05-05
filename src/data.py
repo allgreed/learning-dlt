@@ -139,9 +139,11 @@ class Chain:
         self.blocks = {}
         self.latest = None
 
-    def _append(self, b: Block):
+    def _append(self, b: Block, update_head: bool = True):
+        assert type(b) is Block, f"trying to insert {type(b)} into chain"
         self.blocks[b.hash] = b
-        self.latest = b.hash
+        if update_head:
+            self.latest = b.hash
 
     @property
     def latest_block(self):
@@ -173,6 +175,21 @@ class Chain:
             ledger[t.to_account] += amount
 
         return ledger
+
+    def _gc(self):
+        """
+        Delete blocks not reachable from latest
+        """
+
+        to_remove = set(self.blocks.keys())
+        cur = self.latest_block
+
+        while not cur.is_genesis:
+            to_remove.remove(cur.hash)
+            cur = self.blocks[cur.previous_block_hash]
+
+        for bh in to_remove: 
+            del self.blocks[bh]
 
     def __getitem__(self, key):
         return self.blocks[key]

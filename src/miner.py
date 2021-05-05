@@ -19,6 +19,11 @@ class Miner:
     def start(self):
         self.p.start()
 
+    def stop(self):
+        # TODO: this probably needs more than only this code
+        # TODO: clear miner manager cache and miner queues
+        self.p.terminate()
+
     def submit(self, t: Transfer) -> None:
         self.staged.append(t)
         self.input.put(t)

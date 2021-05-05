@@ -31,9 +31,10 @@ class Net:
 
     def broadcast(self, message: Protocol.Message):
         assert isinstance(message, Protocol.Message)
-        message = Protocol.encode(message)
+        payload = Protocol.encode(message)
 
-        self._fn(message)
+        print(f" -> {message}")
+        self._fn(payload)
 
     @staticmethod
     def _broadcast_udp(message, destinations):
@@ -41,7 +42,7 @@ class Net:
             send_udp_message(*d, message)
 
 
-async def loop(wallet: Wallet, chain: Chain, miner: Miner):
+async def loop(wallet: Wallet, chain: Chain, miner: Miner, net: Net):
     class UI(UserInterfaceIOC):
         def sync(self):
             miner.sync(chain)
@@ -70,62 +71,97 @@ async def loop(wallet: Wallet, chain: Chain, miner: Miner):
     ui = UI(you=wallet.account[:8], quarry=QUARRY_ACCOUNT)
 
     await ui.execute()
+    # TODO: add explicit sync and miner stop action -> for debugging purposes
+    # TODO: after debugging - fix chain not syncing with miner without doing UI action
 
-    return await loop(wallet, chain, miner)
+    return await loop(wallet, chain, miner, net)
 
 
 async def process_incoming_messages(m: Protocol.Message, seq: SBBSequence, miner: Miner, chain: Chain, net: Net) -> None:
     # TODO: put a switch for displaying it in the UI
-    print(m)
+    print(f" <- {m}")
 
     if seq.is_mining:
         if isinstance(m, Protocol.GetCount):
-            Net.broadcast(Protocol.Count(blocks=len(chain)))
+            net.broadcast(Protocol.Count(blocks=len(chain)))
 
         elif isinstance(m, Protocol.Count):
             if m.blocks > len(chain):
                 seq.longer_chain_detected()
-                Net.broadcast(Protocol.GetBlockHashes())
+                net.broadcast(Protocol.GetBlockHashes())
+                miner.stop()
 
         elif isinstance(m, Protocol.GetBlockHashes):
-            Net.broadcast(Protocol.BlockHashes(hashes=list(chain.hashes)))
+            net.broadcast(Protocol.BlockHashes(hashes=list(chain.hashes)))
 
         elif isinstance(m, Protocol.ReqBlock):
             requested_block_hahs = m.hash
-            block = Chain[requested_block_hahs]
-            Net.broadcast(Protocol.ExistingBlock(block=pack_block(block)))
+            block = chain[requested_block_hahs]
+            net.broadcast(Protocol.ExistingBlock(block=pack_block(block)))
 
         elif isinstance(m, Protocol.NewBlock):
             new_block = m.block
-            Chain.try_incorporate(unpack_block(new_block))
+            chain.try_incorporate(unpack_block(new_block))
 
     elif seq.is_sync_hashes:
         if isinstance(m, Protocol.BlockHashes):
-            # TODO: remember the hashes!
-            hashes = m.hashes 
+            hashes = set(m.hashes)
+
             if len(hashes) > len(chain):
                 seq.more_hashes_than_blocks()
-                # TODO: send request for a hash not in chain.hashes
+                diff = hashes - set(chain.hashes)
+
+                # this is a nasty hack :C
+                seq.requesting = diff
+                seq.new = diff.copy()
+
+                cur = next(iter(diff))
+                net.broadcast(Protocol.ReqBlock(hash=cur))
 
     elif seq.is_sync_blocks:
         if isinstance(m, Protocol.ExistingBlock):
-            # TODO: is requested? if not -> skip
-            # TODO: mark as received
-            # TODO: validate
-            # TODO: add to chain / stash
-            # TODO: try apply stash
-            # TODO: if requests_pending -> send
-            # TODO: else: mine!
+            block = m.block
 
+            print("Want", seq.requesting)
+            if block.hash not in seq.requesting:
+                print(f"Skipping {block.hash}")
+                return
+
+            seq.requesting.remove(block.hash)
+
+            # TODO: validate
+            # TODO: question - what does it mean "validate"?
+            # TODO: question - what to do when a block is invalid
+
+            # ---- entering inconsistent state ----
+            chain._append(unpack_block(block), update_head=False)
+
+            if seq.requesting:
+                cur = next(iter(seq.requesting))
+                net.broadcast(Protocol.ReqBlock(hash=cur))
+            else:
+                prev = { b.previous_block_hash for b in chain.blocks.values() }
+                maybe_latest = seq.new - prev
+                print(prev, seq.new, maybe_latest)
+                latest = maybe_latest.pop()
+                assert len(maybe_latest) == 0, "Inconsistent longest chain detected"
+                # TODO: question - is that approperaite reaction? ^
+
+                chain.latest = latest
+                chain._gc()
+                # ---- exiting inconsistent state ----
+
+                seq.hashes_equal_blocks()
+                print("fin")
+                # TODO: start the miner
+                # TODO: make sure that staged transactions are not lost
     else:
         assert 0, "Entered unknown state"
 
     # TODO: test this
-        -> existing block sync
-        -> longer chain detected
+        # -> existing block sync
+        # -> longer chain detected
 
-    # TODO: stop and start miner accordingly -> with the updated chain
-    # TODO: make sure that the processed transactions are not lost
 
 
 async def setup(wallet: Wallet, seq: SBBSequence, miner: Miner, chain: Chain, net: Net):
@@ -135,7 +171,7 @@ async def setup(wallet: Wallet, seq: SBBSequence, miner: Miner, chain: Chain, ne
 
     net.broadcast(Protocol.GetCount())
 
-    return await loop(wallet, chain, miner)
+    return await loop(wallet, chain, miner, net)
 
 
 def pack_block(b: Block) -> Protocol.Block:
