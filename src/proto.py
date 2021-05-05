@@ -4,6 +4,7 @@ from typing import Optional, Dict, Sequence
 from pydantic.dataclasses import dataclass
 from pydantic.json import pydantic_encoder
 from pydantic import conint, BaseModel
+from statemachine import StateMachine, State
 
 from src.data import hash_digest_t, nonce_t, username_t, timestamp_t
 from src.util import _subslice
@@ -13,6 +14,16 @@ STX = b"2"
 ETX = b"3"
 CMD_BYTES = 1
 LENGHT_BYTES = 2
+
+
+class SBBSequence(StateMachine):
+    mining = State("Mining", initial=True)
+    sync_hashes = State("Get Block Hashes")
+    sync_blocks = State("Get Blocks")
+
+    longer_chain_detected = mining.to(sync_hashes)
+    more_hashes_than_blocks = sync_hashes.to(sync_blocks)
+    hashes_equal_blocks = sync_blocks.to(mining)
 
 
 class Message:
@@ -80,7 +91,7 @@ class Block:
 @dataclass
 class ExistingBlock(Message):
     CMD = b"x"
-    EXAMPLE_PAYLOADS = [{"block": {"hash": "bcb8d59b37c026d55c6eddc81058c5465036cf14d9630ce7ffbbac14cbff21fc", "hashedContent": {"nonce": 1, "prev_hash": "bcb8d59b37c026d55c6eddc81058c5465036cf14d9630ce7ffbbac14cbff21fc", "timestamp": 1, "transactions": [{"from_ac": "aaaaa", "to_ac": "bbbbb"}]}}}]
+    EXAMPLE_PAYLOADS = [{"block": {"hash": "bcb8d59b37c026d55c6eddc81058c5465036cf14d9630ce7ffbbac14cbff21fc", "hashedContent": {"nonce": 1, "prev_hash": "bcb8d59b37c026d55c6eddc81058c5465036cf14d9630ce7ffbbac14cbff21fc", "timestamp": 1, "transactions": [{"from_ac": "0977846f7b582cf027519210e7c4d182af92780204ff1d827fdc6557b14ff231fab77a2f90889b4d832febc2f2de270d08a14b772f3c002283e0d573e643c247", "to_ac": "0977846f7b582cf027519210e7c4d182af92780204ff1d827fdc6557b14ff231fab77a2f90889b4d832febc2f2de270d08a14b772f3c002283e0d573e643c247"}]}}}]
 
     block: Block
 
@@ -88,7 +99,7 @@ class ExistingBlock(Message):
 @dataclass
 class NewBlock(Message):
     CMD = b"z"
-    EXAMPLE_PAYLOADS = [{"block": {"hash": "bcb8d59b37c026d55c6eddc81058c5465036cf14d9630ce7ffbbac14cbff21fc", "hashedContent": {"nonce": 1, "prev_hash": "bcb8d59b37c026d55c6eddc81058c5465036cf14d9630ce7ffbbac14cbff21fc", "timestamp": 1, "transactions": [{"from_ac": "aaaaa", "to_ac": "bbbbb"}]}}}]
+    EXAMPLE_PAYLOADS = [{"block": {"hash": "bcb8d59b37c026d55c6eddc81058c5465036cf14d9630ce7ffbbac14cbff21fc", "hashedContent": {"nonce": 1, "prev_hash": "bcb8d59b37c026d55c6eddc81058c5465036cf14d9630ce7ffbbac14cbff21fc", "timestamp": 1, "transactions": [{"from_ac": "0977846f7b582cf027519210e7c4d182af92780204ff1d827fdc6557b14ff231fab77a2f90889b4d832febc2f2de270d08a14b772f3c002283e0d573e643c247", "to_ac": "0977846f7b582cf027519210e7c4d182af92780204ff1d827fdc6557b14ff231fab77a2f90889b4d832febc2f2de270d08a14b772f3c002283e0d573e643c247"}]}}}]
 
     block: Block
 

@@ -6,40 +6,12 @@ from typing import Sequence, Dict, Tuple
 from ecdsa import SigningKey, SECP256k1
 
 import src.proto as Protocol
-from src.util import setup_signal_handlers, send_udp_message, periodic
+from src.proto import SBBSequence
+from src.util import setup_signal_handlers, periodic
 from src.data import Chain, Wallet, BlockIntent, Block, Transfer, username_t, QUARRY_ACCOUNT
 from src.ui import UserInterfaceIOC
 from src.miner import Miner
-
-
-# TODO: extract this and net? + hardcode peer discovery?
-from statemachine import StateMachine, State
-class SBBSequence(StateMachine):
-    mining = State("Mining", initial=True)
-    sync_hashes = State("Get Block Hashes")
-    sync_blocks = State("Get Blocks")
-
-    longer_chain_detected = mining.to(sync_hashes)
-    more_hashes_than_blocks = sync_hashes.to(sync_blocks)
-    hashes_equal_blocks = sync_blocks.to(mining)
-
-
-class Net:
-    def __init__(self, peers: Sequence[Tuple[str, int]]):
-        self.peers = peers
-        self._fn = functools.partial(Net._broadcast_udp, destinations=self.peers)
-
-    def broadcast(self, message: Protocol.Message):
-        assert isinstance(message, Protocol.Message)
-        payload = Protocol.encode(message)
-
-        print(f" -> {message}")
-        self._fn(payload)
-
-    @staticmethod
-    def _broadcast_udp(message, destinations):
-        for d in destinations:
-            send_udp_message(*d, message)
+from src.coms import Net
 
 
 async def loop(wallet: Wallet, chain: Chain, miner: Miner, net: Net):
@@ -68,18 +40,21 @@ async def loop(wallet: Wallet, chain: Chain, miner: Miner, net: Net):
             self.sync()
             return chain.ledger(miner.staged)[wallet.account]
 
+        def network_sync(self) -> None:
+            net.broadcast(Protocol.GetCount())
+
     ui = UI(you=wallet.account[:8], quarry=QUARRY_ACCOUNT)
 
     await ui.execute()
-    # TODO: add explicit sync and miner stop action -> for debugging purposes
     # TODO: after debugging - fix chain not syncing with miner without doing UI action
+        # TODO: add miner ability to push sync tasks into the task queue
+            # both sync + announce
 
     return await loop(wallet, chain, miner, net)
 
 
 async def process_incoming_messages(m: Protocol.Message, seq: SBBSequence, miner: Miner, chain: Chain, net: Net) -> None:
-    # TODO: put a switch for displaying it in the UI
-    print(f" <- {m}")
+    print(f"$ <- {m}")
 
     if seq.is_mining:
         if isinstance(m, Protocol.GetCount):
@@ -101,6 +76,7 @@ async def process_incoming_messages(m: Protocol.Message, seq: SBBSequence, miner
 
         elif isinstance(m, Protocol.NewBlock):
             new_block = m.block
+            # TODO: doesn't work or is not valid -> just drop it
             chain.try_incorporate(unpack_block(new_block))
 
     elif seq.is_sync_hashes:
@@ -122,7 +98,6 @@ async def process_incoming_messages(m: Protocol.Message, seq: SBBSequence, miner
         if isinstance(m, Protocol.ExistingBlock):
             block = m.block
 
-            print("Want", seq.requesting)
             if block.hash not in seq.requesting:
                 print(f"Skipping {block.hash}")
                 return
@@ -130,8 +105,10 @@ async def process_incoming_messages(m: Protocol.Message, seq: SBBSequence, miner
             seq.requesting.remove(block.hash)
 
             # TODO: validate
-            # TODO: question - what does it mean "validate"?
-            # TODO: question - what to do when a block is invalid
+                # hash correct
+                # all transactions valid
+                # ...
+            # TODO: when invalid -> drop it
 
             # ---- entering inconsistent state ----
             chain._append(unpack_block(block), update_head=False)
@@ -142,26 +119,28 @@ async def process_incoming_messages(m: Protocol.Message, seq: SBBSequence, miner
             else:
                 prev = { b.previous_block_hash for b in chain.blocks.values() }
                 maybe_latest = seq.new - prev
-                print(prev, seq.new, maybe_latest)
                 latest = maybe_latest.pop()
                 assert len(maybe_latest) == 0, "Inconsistent longest chain detected"
-                # TODO: question - is that approperaite reaction? ^
+                # TODO: wrong - drop the invalid stuff
 
                 chain.latest = latest
                 chain._gc()
                 # ---- exiting inconsistent state ----
 
                 seq.hashes_equal_blocks()
+                try:
+                    miner.start(chain.latest_block)
+                except KeyError:
+                    print("=== CHAIN DUMP ======")
+                    print(chain.blocks)
+                    print(chain.latest)
+                    print("=======================")
+
+                    raise
                 print("fin")
-                # TODO: start the miner
-                # TODO: make sure that staged transactions are not lost
+                # TODO: make sure that staged transactions are not lost <- test
     else:
         assert 0, "Entered unknown state"
-
-    # TODO: test this
-        # -> existing block sync
-        # -> longer chain detected
-
 
 
 async def setup(wallet: Wallet, seq: SBBSequence, miner: Miner, chain: Chain, net: Net):
@@ -174,35 +153,12 @@ async def setup(wallet: Wallet, seq: SBBSequence, miner: Miner, chain: Chain, ne
     return await loop(wallet, chain, miner, net)
 
 
-def pack_block(b: Block) -> Protocol.Block:
-    return Protocol.Block(hash=b.hash, hashedContent={"nonce": b.nonce, "prev_hash": b.previous_block_hash, "timestamp": b.timestamp, "transactions": pack_transactions(b.transactions)})
-
-
-def unpack_block(b: Protocol.Block) -> Block:
-    return Block(hash=b.hash, nonce=b.hashedContent.nonce, previous_block_hash=b.hashedContent.prev_hash, timestamp=b.hashedContent.timestamp, transactions=unpack_transactions(b.hashedContent.transactions))
-
-
-def pack_transactions(ts: Sequence[Transfer]) -> Sequence[Protocol.Transaction]:
-    return [ Protocol.Transaction(from_ac=t.from_account, to_ac=t.to_account) for t in ts]
-
-
-def unpack_transactions(ts: Sequence[Protocol.Transaction]) -> Sequence[Transfer]:
-    return [ Transfer(from_account=t.from_ac, to_account=t.to_ac) for t in ts]
-
-
 def main():
     host = "127.0.0.1"
     port = int(os.environ["APP_PORT"])
     cool_miner = bool(os.environ.get("APP_COOL_MINER",""))
 
-    nodes_candidates = [
-        (host, 5555),
-        (host, 5556),
-        (host, 5557),
-    ]
-    nodes = [n for n in nodes_candidates if n[0] != host or n[1] != port]
-
-    net = Net(nodes)
+    net = Net(this=(host, port))
     wallet = Wallet.new()
     miner = Miner(wallet.account, cool=cool_miner)
     seq = SBBSequence()
@@ -219,6 +175,22 @@ def main():
     print(f"Started node at {host}:{port}")
 
     loop.run_forever()
+
+
+def pack_block(b: Block) -> Protocol.Block:
+    return Protocol.Block(hash=b.hash, hashedContent={"nonce": b.nonce, "prev_hash": b.previous_block_hash, "timestamp": b.timestamp, "transactions": pack_transactions(b.transactions)})
+
+
+def unpack_block(b: Protocol.Block) -> Block:
+    return Block(hash=b.hash, nonce=b.hashedContent.nonce, previous_block_hash=b.hashedContent.prev_hash, timestamp=b.hashedContent.timestamp, transactions=unpack_transactions(b.hashedContent.transactions))
+
+
+def pack_transactions(ts: Sequence[Transfer]) -> Sequence[Protocol.Transaction]:
+    return [ Protocol.Transaction(from_ac=t.from_account, to_ac=t.to_account) for t in ts]
+
+
+def unpack_transactions(ts: Sequence[Protocol.Transaction]) -> Sequence[Transfer]:
+    return [ Transfer(from_account=t.from_ac, to_account=t.to_ac) for t in ts]
 
 
 def mk_handler(f):

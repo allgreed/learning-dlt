@@ -12,9 +12,8 @@ from ecdsa import SigningKey as SKey, SECP256k1
 from ecdsa.keys import SigningKey, VerifyingKey
 
 
-# TODO: expand this -> with actual constraints
-username_t = constr(min_length=2, max_length=128)
-hash_digest_t = str
+username_t = constr(regex=r"^([0-9a-f]{128}|0)$")
+hash_digest_t = constr(regex=r"^([0-9a-f]{64}|0)$")
 
 nonce_t = conint(ge=0)
 amount_t = conint(ge=1, le=1)
@@ -23,7 +22,7 @@ timestamp_t = conint(ge=0)
 
 
 GENESIS_BLOCK_PREV_HASH: hash_digest_t = "0"
-QUARRY_ACCOUNT: username_t = "000"
+QUARRY_ACCOUNT: username_t = "0"
 
 
 class Wallet:
@@ -66,8 +65,7 @@ class Transfer(Transaction):
 class BlockIntent:
     previous_block_hash: hash_digest_t
     transactions: Sequence[Transaction]
-    # TODO: constrain to positive ints only, find all usages
-    timestamp: int
+    timestamp: timestamp_t
 
     @classmethod
     def genesis(cls, transactions: Sequence[Transaction], now_fn=None) -> "BlockIntent":
@@ -88,8 +86,10 @@ class BlockIntent:
             nonce = self.nonce
 
         # TODO: deterministically cast transactions into JSON array, have a seperate method for that -> it's already sequential, so JSON dumps? :D - but it can fail on stuff like key ordering -> test it!
+        # TODO: pack before hashing!
         _data = json.dumps(self, default=pydantic_encoder)
         data = json.loads(_data)
+
         data["nonce"] = nonce
         dump = json.dumps(data)
         return dump.encode("utf-8")
@@ -181,8 +181,11 @@ class Chain:
         Delete blocks not reachable from latest
         """
 
-        to_remove = set(self.blocks.keys())
         cur = self.latest_block
+        to_remove = set(self.blocks.keys())
+
+        if cur.is_genesis:
+            return
 
         while not cur.is_genesis:
             to_remove.remove(cur.hash)

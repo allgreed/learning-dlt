@@ -3,3 +3,4 @@ Tradeoffs:
 - marginally easier to troubleshoot (json is human readable-ish)
 - potentially larger [de]serialization overhead => "parsing" via offsets + struct unpacking is probably much faster
 - larger payload size => pure binary protocol would allow much more compression
+- may lead to problems with hash verification when using seperate protcol and interanl objects
