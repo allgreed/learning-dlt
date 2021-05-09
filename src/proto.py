@@ -105,7 +105,8 @@ class NewBlock(Message):
 
 
 def encode(msg: Message):
-    payload = json.dumps(msg, default=_pydantic_encoder).encode("ascii")
+    payload = json.dumps(msg, default=_pydantic_encoder)
+    payload = b"" if payload == "null" else payload.encode("ascii")
 
     length = (len(payload) + CMD_BYTES).to_bytes(LENGHT_BYTES, byteorder='big')
     result = STX + length + msg.CMD + payload + ETX
@@ -128,7 +129,7 @@ def decode(data) -> Message:
 
     msg_cls = COMMAND_TO_CLASS[cmd]
 
-    body = json.loads(payload.decode("ascii")) or {}
+    body = {} if len(payload) == 0 else json.loads(payload.decode("ascii"))
     result = msg_cls.from_parse(**body)
 
     return result
@@ -139,6 +140,6 @@ def _pydantic_encoder(obj):
     Basically a pydantic JSON encoder, but returns None instead of {} for "empty" objects
     """
     if isinstance(obj, Message) and type(obj).__pydantic_model__.__annotations__ == {}:
-        return None 
+        return None
 
     return pydantic_encoder(obj)

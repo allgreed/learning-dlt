@@ -30,4 +30,4 @@ def test_works(msg):
 def test_null():
     transit_msg = Protocol.encode(Protocol.GetCount())
 
-    assert json.loads(transit_msg[Protocol.PAYLOAD_INDICES].decode("ascii")) == None
+    assert transit_msg[Protocol.PAYLOAD_INDICES].decode("ascii") == ""
