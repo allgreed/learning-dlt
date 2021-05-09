@@ -138,13 +138,33 @@ class Block(BlockIntent):
 class Chain:    
     def __init__(self):
         self.blocks = {}
-        self.latest = None
+        self.latest = GENESIS_BLOCK_PREV_HASH
 
-    def _append(self, b: Block, update_head: bool = True):
+    def _append(self, b: Block, _update_head: bool = True):
         assert type(b) is Block, f"trying to insert {type(b)} into chain"
         self.blocks[b.hash] = b
-        if update_head:
+        if _update_head:
             self.latest = b.hash
+
+    def is_block_valid(self, b: Block) -> bool:
+        if not b._is_passed_difficulty:
+            return False
+
+        return True
+
+    def is_valid(self) -> int:
+        cur = self.latest_block
+        while not cur.is_genesis:
+            if not self.is_block_valid(cur):
+                return False
+
+            cur = self.blocks[cur.previous_block_hash]
+
+        for account, balance in self.ledger().items():
+            if balance < 0 and account != QUARRY_ACCOUNT:
+                return False
+
+        return True
 
     @property
     def latest_block(self):
@@ -155,6 +175,12 @@ class Chain:
         return self.blocks.keys()
 
     def try_incorporate(self, b: Block) -> bool:
+        if not self.is_block_valid(b):
+            return False
+
+        if b.previous_block_hash != self.latest:
+            return False
+
         self._append(b)
         return True
 
@@ -168,15 +194,16 @@ class Chain:
         length = 0
 
         try:
-            while tip != GENESIS_BLOCK_PREV_HASH and tip is not None:
+            while tip != GENESIS_BLOCK_PREV_HASH:
                 tip = self.blocks[tip].previous_block_hash
                 length += 1
-        except KeyError:  # inconsistent chain
+        except KeyError:
+            # malformed chain, should no be taken into account
             length = -1
         finally:
             return length
 
-    def ledger(self, additional_transactions: Sequence[Transaction]):
+    def ledger(self, additional_transactions: Sequence[Transaction] = []):
         ledger = defaultdict(lambda: 0)
 
         for b in self.blocks.values():
@@ -192,7 +219,7 @@ class Chain:
 
         return ledger
 
-    def _gc(self):
+    def gc(self):
         """
         Delete blocks not reachable from latest
         """

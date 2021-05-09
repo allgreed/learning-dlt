@@ -38,7 +38,7 @@ class Miner:
 
     def sync(self, chain: Chain):
         if not self.p:
-            return 
+            return []
 
         added_blocks = []
         for _ in range(self.output.qsize()):

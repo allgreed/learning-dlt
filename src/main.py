@@ -75,7 +75,6 @@ async def process_incoming_messages(m: Protocol.Message, seq: SBBSequence, miner
 
         elif isinstance(m, Protocol.NewBlock):
             new_block = m.block
-            # TODO: doesn't work or is not valid -> just drop it
             if chain.try_incorporate(unpack_block(new_block)):
                 miner.resync(chain.latest_block)
 
@@ -96,7 +95,7 @@ async def process_incoming_messages(m: Protocol.Message, seq: SBBSequence, miner
 
     elif seq.is_sync_blocks:
         if isinstance(m, Protocol.ExistingBlock):
-            block = m.block
+            block = unpack_block(m.block)
 
             if block.hash not in seq.requesting:
                 logging.debug(f"Skipping {block.hash}")
@@ -104,13 +103,8 @@ async def process_incoming_messages(m: Protocol.Message, seq: SBBSequence, miner
 
             seq.requesting.remove(block.hash)
 
-            # TODO: validate
-                # hash correct
-                # all transactions valid
-                # ...
-            # TODO: when invalid -> drop it
-
-            chain._append(unpack_block(block), update_head=False)
+            # not really fond of this section -> this is effectively vivsected contents of try_incorporate
+            chain._append(block, _update_head=False)
 
             if seq.requesting:
                 cur = next(iter(seq.requesting))
@@ -121,9 +115,14 @@ async def process_incoming_messages(m: Protocol.Message, seq: SBBSequence, miner
 
                 for c in latest_candidates:
                     if c in chain and chain.length_from(c) > len(chain):
+                        _backup = chain.latest
                         chain.latest = c
 
-                chain._gc()
+                        # dropping the entire chain if there is at least single invalid block
+                        if not chain.is_valid():
+                            chain.latest = _backup
+
+                chain.gc()
 
                 seq.hashes_equal_blocks()
                 miner.start(chain.latest_block)
@@ -131,14 +130,14 @@ async def process_incoming_messages(m: Protocol.Message, seq: SBBSequence, miner
         assert 0, "Entered unknown state"
 
 
-def _synchronize_local(chain, miner, net):
+def synchronize_local(chain, miner, net):
     new_blocks = miner.sync(chain)
     for b in new_blocks:
         net.broadcast(Protocol.NewBlock(pack_block(b)))
 
 
-def _synchronize_remote(chain, miner, net):
-    _synchronize_local(chain, miner, net)
+def synchronize_remote(chain, miner, net):
+    synchronize_local(chain, miner, net)
     net.broadcast(Protocol.GetCount())
 
 
@@ -162,9 +161,9 @@ def main():
     t = loop.create_datagram_endpoint(mk_handler(f), local_addr=(host, port))
     loop.run_until_complete(t)
 
-    loop.create_task(periodic(lambda: _synchronize_remote(chain, miner, net), 60))
+    loop.create_task(periodic(lambda: synchronize_remote(chain, miner, net), 60))
     loop.create_task(main_loop(wallet, chain, miner, net))
-    loop.create_task(periodic(lambda: _synchronize_local(chain, miner, net), 0.1))
+    loop.create_task(periodic(lambda: synchronize_local(chain, miner, net), 0.1))
 
     miner.start()
 

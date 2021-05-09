@@ -43,14 +43,14 @@ def test_difficulty():
 
 def test_length():
     c = Chain()
-    b = Block(nonce=5, previous_block_hash="bcb8d59b37c026d55c6eddc81058c5465036cf14d9630ce7ffbbac14cbff21fc", transactions=[], timestamp=1, hash="bcb8d59b37c026d55c6eddc81058c5465036cf14d9630ce7ffbbac14cbff21fc")
+    b = Block(nonce=5, previous_block_hash="0", transactions=[], timestamp=1, hash="bcb8d59b37c026d55c6eddc81058c5465036cf14d9630ce7ffbbac14cbff21fc")
 
     assert len(c) == 0
 
     c.try_incorporate(b)
     assert len(c) == 1
 
-    c.try_incorporate(dataclasses.replace(b, hash="bcb8d59b37c026d55c6eddc81058c5465036cf14d9630ce7ffbbac14cbaaa1aa"))
+    c.try_incorporate(dataclasses.replace(b, hash="bcb8d59b37c026d55c6eddc81058c5465036cf14d9630ce7ffbbac14cbaaa1aa", previous_block_hash="bcb8d59b37c026d55c6eddc81058c5465036cf14d9630ce7ffbbac14cbff21fc"))
     assert len(c) == 2
 
 
@@ -59,7 +59,7 @@ def test_gc_chain_len_1_doesnt_empty_chain():
     b = Block(nonce=5, previous_block_hash="0", transactions=[], timestamp=1, hash="bcb8d59b37c026d55c6eddc81058c5465036cf14d9630ce7ffbbac14cbff21fc")
     c.try_incorporate(b)
 
-    c._gc()
+    c.gc()
 
     assert len(c) == 1
     assert c.latest_block
@@ -72,6 +72,14 @@ def test_gc_doesnt_remove_required_items():
     c.try_incorporate(b0)
     c.try_incorporate(b1)
 
-    c._gc()
+    c.gc()
 
     assert len(c) == 2
+
+
+def test_failed_incorporation():
+    c = Chain()
+    b = Block(nonce=5, previous_block_hash="0", transactions=[], timestamp=1, hash="bcb8d59b37c026d55c6eddc81058c5465036cf14d9630ce7ffbbac14cbff21fc")
+    c.try_incorporate(b)
+
+    assert not c.try_incorporate(dataclasses.replace(b, hash="bcb8d59b37c026d55c6eddc81058c5465036cf14d9630ce7ffbbac14cbaaa1aa", previous_block_hash="1111111111111111111111111111111111111111111111111111111111111111"))
