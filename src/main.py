@@ -77,6 +77,8 @@ async def process_incoming_messages(m: Protocol.Message, seq: SBBSequence, miner
             new_block = m.block
             if chain.try_incorporate(unpack_block(new_block)):
                 miner.resync(chain.latest_block)
+            else:
+                logging.info("invalid block %s, dropping", new_block.hash)
 
     elif seq.is_sync_hashes:
         if isinstance(m, Protocol.BlockHashes):
