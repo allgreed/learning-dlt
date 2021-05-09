@@ -85,14 +85,15 @@ class BlockIntent:
         if nonce is None:
             nonce = self.nonce
 
-        # TODO: deterministically cast transactions into JSON array, have a seperate method for that -> it's already sequential, so JSON dumps? :D - but it can fail on stuff like key ordering -> test it!
-        # TODO: pack before hashing!
-        _data = json.dumps(self, default=pydantic_encoder)
-        data = json.loads(_data)
+        # this is a hack, but given the protocol I think it's acceptable
+        # also: THIS IS NOT DETERMINISTIC ACROSS IMPLEMENTATIONS!!!
+        from src.main import pack_block
+        _data = json.dumps(pack_block(self), default=pydantic_encoder)
+        data = json.loads(_data)["hashedContent"]
 
         data["nonce"] = nonce
         dump = json.dumps(data)
-        return dump.encode("utf-8")
+        return dump.encode("ascii")
 
 
 @dataclass(frozen=True)
@@ -158,7 +159,22 @@ class Chain:
         return True
 
     def __len__(self):
-        return len(self.blocks)
+        return self.length_from(self.latest)
+
+    def __contains__(self, hash):
+        return hash in self.blocks
+        
+    def length_from(self, tip: Optional[hash_digest_t]) -> int:
+        length = 0
+
+        try:
+            while tip != GENESIS_BLOCK_PREV_HASH and tip is not None:
+                tip = self.blocks[tip].previous_block_hash
+                length += 1
+        except KeyError:  # inconsistent chain
+            length = -1
+        finally:
+            return length
 
     def ledger(self, additional_transactions: Sequence[Transaction]):
         ledger = defaultdict(lambda: 0)
@@ -182,16 +198,14 @@ class Chain:
         """
 
         cur = self.latest_block
-        to_remove = set(self.blocks.keys())
-
-        if cur.is_genesis:
-            return
+        unreached = set(self.blocks.keys())
 
         while not cur.is_genesis:
-            to_remove.remove(cur.hash)
+            unreached.remove(cur.hash)
             cur = self.blocks[cur.previous_block_hash]
+        unreached.remove(cur.hash)
 
-        for bh in to_remove: 
+        for bh in unreached: 
             del self.blocks[bh]
 
     def __getitem__(self, key):

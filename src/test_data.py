@@ -53,6 +53,7 @@ def test_length():
     c.try_incorporate(dataclasses.replace(b, hash="bcb8d59b37c026d55c6eddc81058c5465036cf14d9630ce7ffbbac14cbaaa1aa"))
     assert len(c) == 2
 
+
 def test_gc_chain_len_1_doesnt_empty_chain():
     c = Chain()
     b = Block(nonce=5, previous_block_hash="0", transactions=[], timestamp=1, hash="bcb8d59b37c026d55c6eddc81058c5465036cf14d9630ce7ffbbac14cbff21fc")
@@ -62,3 +63,15 @@ def test_gc_chain_len_1_doesnt_empty_chain():
 
     assert len(c) == 1
     assert c.latest_block
+
+
+def test_gc_doesnt_remove_required_items():
+    c = Chain()
+    b0 = Block(nonce=5, previous_block_hash="0", transactions=[], timestamp=1, hash="bcb8d59b37c026d55c6eddc81058c5465036cf14d9630ce7ffbbac14cbff21fc")
+    b1 = Block(nonce=5, previous_block_hash="bcb8d59b37c026d55c6eddc81058c5465036cf14d9630ce7ffbbac14cbff21fc", transactions=[], timestamp=1, hash="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    c.try_incorporate(b0)
+    c.try_incorporate(b1)
+
+    c._gc()
+
+    assert len(c) == 2

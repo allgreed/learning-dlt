@@ -3,6 +3,7 @@ import random
 import multiprocessing
 import time
 from typing import Optional, Sequence
+from datetime import datetime
 
 from src.data import Block, username_t, Chain, Transfer, BlockIntent, hash_digest_t
 
@@ -27,6 +28,10 @@ class Miner:
         _clean_q(self.input)
         _clean_q(self.output)
 
+    def resync(self, sync_block: Optional[Block] = None):
+        self.stop()
+        self.start(sync_block)
+
     def submit(self, t: Transfer) -> None:
         self.staged.append(t)
         self.input.put(t)
@@ -35,11 +40,15 @@ class Miner:
         if not self.p:
             return 
 
+        added_blocks = []
         for _ in range(self.output.qsize()):
             erm = self.output.get()
             assert chain.try_incorporate(erm)
+            added_blocks.append(erm)
             if self.staged and self.staged[0] in erm.transactions:
                 self.staged.pop()
+
+        return added_blocks
 
     def _exec(self, account, sync_block, in_q, out_q):
         latest = sync_block
@@ -70,7 +79,8 @@ class Miner:
                 end = time.time()
 
             latest = b
-            print(f"miner found block: {b.hash[:16]} in {end - start:.2f}s")
+
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] miner found block: {b.hash[:16]} in {end - start:.2f}s")
             out_q.put(b)
 
 

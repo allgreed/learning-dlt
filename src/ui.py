@@ -46,6 +46,9 @@ class UserInterfaceIOC:
             balance = self.balance()
             print(f"{balance} SBB")
 
+        elif action.startswith("q"):
+            self.flip_detailed_logging()
+
         elif action.startswith("s"):
             self.network_sync()
 

@@ -1,4 +1,5 @@
 import functools
+import logging
 from typing import Sequence, Tuple
 
 import src.proto as Protocol
@@ -24,7 +25,7 @@ class Net:
         assert isinstance(message, Protocol.Message)
         payload = Protocol.encode(message)
 
-        print(f"$ -> {message}")
+        logging.debug(f"@ {message} @")
         self._fn(payload)
 
     @staticmethod
