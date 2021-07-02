@@ -1,6 +1,8 @@
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
+class Ble():
+    pass
 
 class UserInterfaceIOC:
     def __init__(self, you, quarry):

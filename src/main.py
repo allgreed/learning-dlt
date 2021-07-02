@@ -4,8 +4,6 @@ import functools
 import logging
 from typing import Sequence, Dict, Tuple
 
-from ecdsa import SigningKey, SECP256k1
-
 import src.proto as Protocol
 from src.proto import SBBSequence
 from src.util import setup_signal_handlers, periodic

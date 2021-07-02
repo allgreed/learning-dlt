@@ -27,6 +27,7 @@ let
       ecdsa
       gmpy2
       statemachine
+      python-language-server
     ];
   pythonCore = pkgs.python38;
   myPython = pythonCore.withPackages pythonPkgs;

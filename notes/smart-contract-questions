@@ -1,0 +1,73 @@
+Questions Smartcontracts:
+    - is event an explicit write to the blockchain?
+        - https://www.tutorialspoint.com/solidity/solidity_events.htm
+        - convinience for the external world
+    - calldata vs memory?
+        so.... calldata is only avaible to external calls, and public functions may be called by other functions and hence I cannot specify calldata as storage
+        then why it doesn't matter if I change the storage from "memory" to "calldata" on TODO1? it doesn't! solved!
+    - what is internal? access modifier
+        what's the difference between public/internal [apparently deprecated] and private/external? it's not deprecated, my mistake
+        More importantly why public/internal is deprecated?
+            - maybe deprecated at the constructor
+        How an "internal" call of a public function is different from calling this.f()? It causes a transaction? o.0 -> but who pays for that?
+            The original contract caller
+    - what is pure? Pure is pure
+    - better question: what is payable?
+        it allows funciton to accept ehter!
+    - how is consensus achieved on a smart contract?
+        PoW + in-block transaction ordering
+        - consensus on the ledger -> so only the final state matters
+
+    - do I correctly persume that pure functions and view functions can be called outside of contract for 0 fee?
+        - does that matter when executing a real contract? convinience
+    - can I write to public state variable from outside of the contract? Public just makes a getter
+    - 2.sol <- what does the warrning mean? o.0
+    - execution determinism when reshuffling transaction? (contracts may run in different order)
+        - yup, people even do that deliberately
+        - https://ethereum.stackexchange.com/a/76641 <- does that happen in practice? no idea what I meant
+
+    Security issues TODO2 [02/05]:
+        - staff identifier is public knowledge; anyone can request resources on behalf of any staff member
+        - staff member can give back more resources than he/she took
+
+Comments:
+    - remix no longer requires quoting strings
+    - 02/05 => first TODO; assuming +1 on truthy return from requestAccess (but it's not explicit); what should it do when the password is wrong? o.0
+    - lectures didn't address reentrancy bugs, but I guess they're simillar to ordinary parallel bugs
+
+Unrel:
+    - thougths on yield aggregators?
+        on the fence
+    - A2 questions
+        - should I implement an i32 JVM-like thingy
+            yup
+        - is any error hanling required? - like invalid bytecode
+            nope
+
+- doublecheck on that deprecation access modifiers
+
+1
+=====
+93539819710974eba126578a46dee026757ac403
+
+2
+=====
+57fcdf62d97a615ad3a8d0d1df3b76b13b7b89a0
+
+3
+====
+1898d8c0c9ece35a43311d484a388986649d62e0
+
+4
+=====================
+e063e0cf5608c232df4cac4247e4745a934a30b7
+
+5
+====================
+69fafe8e616564a199538d2dcb2fc55dd2eb4e4d
+
+
+0d831c18cf15da29dd94224d55fa9bf1ae576b4f <- latest
+
+Notes:
+    - remix IDE
