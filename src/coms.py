@@ -18,6 +18,7 @@ class Net:
             (host, 5555),
             (host, 5556),
             (host, 5557),
+            (host, 5558),
         ]
         self.peers =[n for n in nodes_candidates if n != self.this]
 

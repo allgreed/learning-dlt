@@ -110,7 +110,7 @@ async def process_incoming_messages(m: Protocol.Message, seq: SBBSequence, miner
                 cur = next(iter(seq.requesting))
                 net.broadcast(Protocol.ReqBlock(hash=cur))
             else:
-                prev = { b.previous_block_hash for b in chain.blocks.values() }
+                prev = {b.previous_block_hash for b in chain.blocks.values()}
                 latest_candidates = seq.new - prev
 
                 for c in latest_candidates:
@@ -147,7 +147,7 @@ def main():
 
     host = "127.0.0.1"
     port = int(os.environ["APP_PORT"])
-    cool_miner = bool(os.environ.get("APP_COOL_MINER",""))
+    cool_miner = bool(os.environ.get("APP_COOL_MINER", ""))
     loop = asyncio.get_event_loop()
 
     net = Net(this=(host, port))
@@ -188,11 +188,11 @@ def unpack_block(b: Protocol.Block) -> Block:
 
 
 def pack_transactions(ts: Sequence[Transfer]) -> Sequence[Protocol.Transaction]:
-    return [ Protocol.Transaction(from_ac=t.from_account, to_ac=t.to_account) for t in ts]
+    return [Protocol.Transaction(from_ac=t.from_account, to_ac=t.to_account) for t in ts]
 
 
 def unpack_transactions(ts: Sequence[Protocol.Transaction]) -> Sequence[Transfer]:
-    return [ Transfer(from_account=t.from_ac, to_account=t.to_ac) for t in ts]
+    return [Transfer(from_account=t.from_ac, to_account=t.to_ac) for t in ts]
 
 
 def mk_handler(f):
