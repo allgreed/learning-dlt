@@ -6,14 +6,14 @@ from typing import Sequence, Dict, Tuple
 
 import src.proto as Protocol
 from src.proto import SBBSequence
-from src.util import setup_signal_handlers, periodic
+from src.util import setup_signal_handlers, periodic, forever
 from src.data import Chain, Wallet, BlockIntent, Block, Transfer, username_t, QUARRY_ACCOUNT
 from src.ui import UserInterfaceIOC
 from src.miner import Miner
 from src.coms import Net
 
 
-async def main_loop(wallet: Wallet, chain: Chain, miner: Miner, net: Net):
+async def main_loop(wallet: Wallet, chain: Chain, miner: Miner, net: Net, pid: int):
     class UI(UserInterfaceIOC):
         def transfer(self, receipient: username_t):
             if chain.ledger(miner.staged)[wallet.account] <= 0:
@@ -45,9 +45,15 @@ async def main_loop(wallet: Wallet, chain: Chain, miner: Miner, net: Net):
 
     ui = UI(you=wallet.account[:8], quarry=QUARRY_ACCOUNT)
 
-    await ui.execute()
+    # await ui.execute()
 
-    return await main_loop(wallet, chain, miner, net)
+    await asyncio.sleep(0)
+
+    if len(chain.blocks) >= 1:
+        print("Found block, exiting!")
+        import signal
+        miner.stop()
+        os.kill(os.getpid(), signal.SIGINT)
 
 
 async def process_incoming_messages(m: Protocol.Message, seq: SBBSequence, miner: Miner, chain: Chain, net: Net) -> None:
@@ -162,7 +168,7 @@ def main():
     loop.run_until_complete(t)
 
     loop.create_task(periodic(lambda: synchronize_remote(chain, miner, net), 60))
-    loop.create_task(main_loop(wallet, chain, miner, net))
+    loop.create_task(forever(functools.partial(main_loop, wallet, chain, miner, net, os.getpid())))
     loop.create_task(periodic(lambda: synchronize_local(chain, miner, net), 0.1))
 
     miner.start()

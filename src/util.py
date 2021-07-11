@@ -4,7 +4,6 @@ The boring stuff
 import signal
 import asyncio
 import socket
-import sys
 import os
 
 
@@ -14,6 +13,11 @@ async def periodic(f, interval: float):
         await asyncio.sleep(interval)
 
 
+async def forever(f):
+    while True:
+        await f()
+
+
 def send_udp_message(host, port, message) -> None:
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.sendto(message, (host, port))
@@ -21,7 +25,7 @@ def send_udp_message(host, port, message) -> None:
 
 def setup_signal_handlers():
     def signal_handler(_, __):
-        os.kill(os.getpid(), 9)
+        os.kill(os.getpid(), signal.SIGKILL)
 
     signal.signal(signal.SIGINT, signal_handler)
 
