@@ -7,7 +7,7 @@ from typing import Sequence, Dict, Tuple
 import src.proto as Protocol
 from src.proto import SBBSequence
 from src.util import setup_signal_handlers, periodic, forever
-from src.data import Chain, Wallet, BlockIntent, Block, Transfer, username_t, QUARRY_ACCOUNT
+from src.data import Chain, Wallet, Block, Transfer, username_t, QUARRY_ACCOUNT
 from src.ui import UserInterfaceIOC
 from src.miner import Miner
 from src.coms import Net
