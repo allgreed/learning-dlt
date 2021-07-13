@@ -13,6 +13,10 @@ from src.miner import Miner
 from src.coms import Net
 
 
+global BLOCKS
+BLOCKS = 0
+
+
 async def main_loop(wallet: Wallet, chain: Chain, miner: Miner, net: Net, pid: int):
     class UI(UserInterfaceIOC):
         def transfer(self, receipient: username_t):
@@ -47,13 +51,18 @@ async def main_loop(wallet: Wallet, chain: Chain, miner: Miner, net: Net, pid: i
 
     # await ui.execute()
 
-    await asyncio.sleep(0)
+    blocks_in_chain = len(chain.blocks)
 
-    if len(chain.blocks) >= 1:
+    global BLOCKS
+    if blocks_in_chain > BLOCKS:
+        print(f"New {blocks_in_chain - BLOCKS} blocks")
+        BLOCKS = blocks_in_chain
+
+    await asyncio.sleep(1)
+    if blocks_in_chain >= 20:
         print("Found block, exiting!")
-        import signal
         miner.stop()
-        os.kill(os.getpid(), signal.SIGINT)
+        raise KeyboardInterrupt("")
 
 
 async def process_incoming_messages(m: Protocol.Message, seq: SBBSequence, miner: Miner, chain: Chain, net: Net) -> None:
@@ -174,7 +183,19 @@ def main():
     miner.start()
 
     logging.info(f"Starting node at {host}:{port}")
-    loop.run_forever()
+
+    # silence the exceptions
+    loop.set_exception_handler(lambda _, __: None)
+
+    try:
+        loop.run_forever()
+    finally:
+        loop.stop()
+        loop.close()
+        print("Done!")
+        import signal
+        os.kill(os.getpid(), signal.SIGKILL)
+        exit(0)
 
 
 def pack_block(b: Block) -> Protocol.Block:

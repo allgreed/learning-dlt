@@ -189,7 +189,7 @@ class Chain:
 
     def __contains__(self, hash):
         return hash in self.blocks
-        
+
     def length_from(self, tip: Optional[hash_digest_t]) -> int:
         length = 0
 

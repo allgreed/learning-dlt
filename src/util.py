@@ -25,7 +25,7 @@ def send_udp_message(host, port, message) -> None:
 
 def setup_signal_handlers():
     def signal_handler(_, __):
-        os.kill(os.getpid(), signal.SIGKILL)
+        raise KeyboardInterrupt("")
 
     signal.signal(signal.SIGINT, signal_handler)
 

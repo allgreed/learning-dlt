@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+ PYTHONPATH=$PYTHONPATH:$(pwd) 2>&1>/dev/null APP_PORT=5557 python src/main.py &
+ PYTHONPATH=$PYTHONPATH:$(pwd) APP_PORT=5556 2>&1>/dev/null python src/main.py &
+ PYTHONPATH=$PYTHONPATH:$(pwd) APP_PORT=5558 2>&1 >/dev/null  python src/main.py &
+time PYTHONPATH=$PYTHONPATH:$(pwd) APP_PORT=5555 python src/main.py
+ps | grep [p]ython | cut -d' ' -f 1 | xargs kill
