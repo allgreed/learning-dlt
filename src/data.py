@@ -10,6 +10,7 @@ from pydantic.json import pydantic_encoder
 from pydantic import constr, conint
 from ecdsa import SigningKey as SKey, SECP256k1
 from ecdsa.keys import SigningKey, VerifyingKey
+from statemachine import StateMachine, State
 
 
 username_t = constr(regex=r"^([0-9a-f]{128}|0)$")
@@ -23,6 +24,16 @@ timestamp_t = conint(ge=0)
 
 GENESIS_BLOCK_PREV_HASH: hash_digest_t = "0"
 QUARRY_ACCOUNT: username_t = "0"
+
+
+class SBBSequence(StateMachine):
+    mining = State("Mining", initial=True)
+    sync_hashes = State("Get Block Hashes")
+    sync_blocks = State("Get Blocks")
+
+    longer_chain_detected = mining.to(sync_hashes)
+    more_hashes_than_blocks = sync_hashes.to(sync_blocks)
+    hashes_equal_blocks = sync_blocks.to(mining)
 
 
 class Wallet:

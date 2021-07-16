@@ -4,10 +4,9 @@ import functools
 import logging
 from typing import Sequence, Dict, Tuple
 
-import src.proto as Protocol
-from src.proto import SBBSequence
+import src.json_proto as Protocol
 from src.util import setup_signal_handlers, periodic, forever
-from src.data import Chain, Wallet, Block, Transfer, username_t, QUARRY_ACCOUNT
+from src.data import Chain, Wallet, Block, Transfer, username_t, QUARRY_ACCOUNT, SBBSequence
 from src.ui import UserInterfaceIOC
 from src.miner import Miner
 from src.coms import Net
@@ -165,7 +164,7 @@ def main():
     cool_miner = bool(os.environ.get("APP_COOL_MINER", ""))
     loop = asyncio.get_event_loop()
 
-    net = Net(this=(host, port))
+    net = Net(this=(host, port), proto_cls=Protocol)
     wallet = Wallet.new()
     logging.info("my account is: %s", wallet.account)
     miner = Miner(wallet.account, cool=cool_miner)

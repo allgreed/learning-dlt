@@ -1,10 +1,9 @@
 import json
-from typing import Optional, Dict, Sequence
+from typing import Dict, Sequence
 
 from pydantic.dataclasses import dataclass
 from pydantic.json import pydantic_encoder
-from pydantic import conint, BaseModel
-from statemachine import StateMachine, State
+from pydantic import conint
 
 from src.data import hash_digest_t, nonce_t, username_t, timestamp_t
 from src.util import _subslice
@@ -14,16 +13,6 @@ STX = b"2"
 ETX = b"3"
 CMD_BYTES = 1
 LENGHT_BYTES = 2
-
-
-class SBBSequence(StateMachine):
-    mining = State("Mining", initial=True)
-    sync_hashes = State("Get Block Hashes")
-    sync_blocks = State("Get Blocks")
-
-    longer_chain_detected = mining.to(sync_hashes)
-    more_hashes_than_blocks = sync_hashes.to(sync_blocks)
-    hashes_equal_blocks = sync_blocks.to(mining)
 
 
 class Message:
@@ -114,7 +103,7 @@ def encode(msg: Message):
     return result
 
 
-COMMAND_TO_CLASS = { cls.CMD: cls for cls in Message.__subclasses__()}
+COMMAND_TO_CLASS = {cls.CMD: cls for cls in Message.__subclasses__()}
 assert all(len(cls.CMD) == CMD_BYTES for cls in Message.__subclasses__())
 
 
