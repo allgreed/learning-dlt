@@ -4,6 +4,7 @@ import functools
 import logging
 from typing import Sequence, Dict, Tuple
 
+# TODO: import based on env var or something
 import src.json_proto as Protocol
 from src.util import setup_signal_handlers, periodic, forever
 from src.data import Chain, Wallet, Block, Transfer, username_t, QUARRY_ACCOUNT, SBBSequence

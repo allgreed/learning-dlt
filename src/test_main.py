@@ -1,4 +1,4 @@
-from src.proto import Block
+from src.json_proto import Block
 from src.main import pack_block, unpack_block
 
 
